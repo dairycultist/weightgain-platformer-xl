@@ -20,6 +20,7 @@ On **Ubuntu/Debian**:
 ```
 sudo apt update
 sudo apt install libsdl2-dev
+sudo apt install libsdl2-image-dev
 ```
 
 2. Then clone, build, and run the project.
