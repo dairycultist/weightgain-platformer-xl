@@ -7,17 +7,19 @@ static SDL_Renderer *renderer;
 static SDL_Texture *screen_buffer;
 static SDL_Texture *spritesheet;
 
-void draw_sprite(unsigned int sprite, int x, int y, int flip) {
+static uint8_t bg_r, bg_g, bg_b;
 
-	SDL_Rect copy_rect = {
+void set_background(uint8_t r, uint8_t g, uint8_t b) {
 
-		(sprite % SPRS_WIDTH) * SPR_DIM,
-		(sprite / SPRS_WIDTH) * SPR_DIM,
-		SPR_DIM,
-		SPR_DIM
-	};
+	bg_r = r;
+	bg_g = g;
+	bg_b = b;
+}
 
-	SDL_Rect paste_rect = { x, y, SPR_DIM, SPR_DIM };
+void draw_sprite(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip) {
+
+	SDL_Rect copy_rect = { from_x, from_y, w, h };
+	SDL_Rect paste_rect = { to_x, to_y, w, h };
 
 	SDL_RenderCopyEx(renderer, spritesheet, &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
@@ -55,18 +57,6 @@ int main(void) {
 	if (!spritesheet) {
 		fprintf(stderr, "Could not read spritesheet\n");
 		return 1;
-	}
-
-	// verify spritesheet is legal
-	{
-		int width, height;
-
-		SDL_QueryTexture(spritesheet, NULL, NULL, &width, &height);
-
-		if (width != SPRS_WIDTH * SPR_DIM || height != SPRS_HEIGHT * SPR_DIM) {
-			fprintf(stderr, "Sprite sheet has incorrect dimensions; expected %dx%d, got %dx%d\n", SPRS_WIDTH * SPR_DIM, SPRS_HEIGHT * SPR_DIM, width, height);
-			return 1;
-		}
 	}
 
 	// print controls
@@ -148,7 +138,7 @@ int main(void) {
 		SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255); 			// clear window to grey
 		SDL_RenderClear(renderer);
 		SDL_SetRenderTarget(renderer, screen_buffer); 				// set render target to screen_buffer
-		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); 			// clear screen_buffer to black
+		SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, 255); 	// clear screen_buffer to black
 		SDL_RenderClear(renderer);
 
 		game_update(&input);

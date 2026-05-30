@@ -6,13 +6,6 @@
 #define HEIGHT 280
 #define ASPECT_RATIO (WIDTH / (float) HEIGHT)
 
-// width and height of sprites
-#define SPR_DIM 16
-
-// sprite sheet dimensions in sprites
-#define SPRS_WIDTH 16
-#define SPRS_HEIGHT 16
-
 typedef struct {
 
 	int up, 		up_justchanged;
@@ -24,7 +17,7 @@ typedef struct {
 
 } Input;
 
-void draw_sprite(unsigned int sprite, int x, int y, int flip);
+void draw_sprite(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip);
 
 void game_init();
 void game_update(const Input *input);

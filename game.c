@@ -1,10 +1,11 @@
 #include "window.h"
 
-static int px = (WIDTH - SPR_DIM) / 2;
-static int py = (HEIGHT - SPR_DIM) / 2;
+static int px = 0;
+static int py = 0;
 
 void game_init() {
 	
+	set_background(80, 180, 255);
 }
 
 void game_update(const Input *input) {
@@ -21,5 +22,5 @@ void game_update(const Input *input) {
 	if (input->right)
 		px++;
 
-	draw_sprite(0, px, py, 0);
+	draw_sprite(16, 16, 0, 0, px, py, 0);
 }
