@@ -1,11 +1,17 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <dirent.h>
 
 #include "window.h"
 
 static SDL_Renderer *renderer;
 static SDL_Texture *screen_buffer;
-static SDL_Texture *spritesheet;
+
+static SDL_Texture *ss_level;
+
+static SDL_Texture **ss_characters; // array of SDL_Texture *
+static int num_characters;
+static int curr_character; // TODO add a way of changing this value
 
 static uint8_t bg_r, bg_g, bg_b;
 
@@ -16,12 +22,20 @@ void set_background(uint8_t r, uint8_t g, uint8_t b) {
 	bg_b = b;
 }
 
-void draw_sprite(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip) {
+void draw_character(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip) {
 
 	SDL_Rect copy_rect = { from_x, from_y, w, h };
 	SDL_Rect paste_rect = { to_x, to_y, w, h };
 
-	SDL_RenderCopyEx(renderer, spritesheet, &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+	SDL_RenderCopyEx(renderer, ss_characters[curr_character], &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+}
+
+void draw_level(int index, int x, int y) {
+
+	SDL_Rect copy_rect = { (index % 16) * 16, (index / 16) * 16, 16, 16 };
+	SDL_Rect paste_rect = { x, y, 16, 16 };
+
+	SDL_RenderCopyEx(renderer, ss_level, &copy_rect, &paste_rect, 0.0, NULL, SDL_FLIP_NONE);
 }
 
 int main(void) {
@@ -52,11 +66,54 @@ int main(void) {
 		return 1;
 	}
 
-	spritesheet = IMG_LoadTexture(renderer, "spritesheet.png");
+	ss_level = IMG_LoadTexture(renderer, "level.png");
 
-	if (!spritesheet) {
-		fprintf(stderr, "Could not read spritesheet\n");
+	if (!ss_level) {
+		fprintf(stderr, "Could not read level.png\n");
 		return 1;
+	}
+
+	// load all character sprites
+	ss_characters = malloc(0);
+	num_characters = 0;
+	curr_character = 0;
+
+	{
+		DIR *dir = opendir("./characters"); 
+
+		if (dir == NULL) {
+			fprintf(stderr, "Could not open ./characters folder\n");
+			return 1;
+		}
+
+		struct dirent *entry;
+
+		while ((entry = readdir(dir)) != NULL) {
+
+			if (strstr(entry->d_name, ".png") != NULL) {
+
+				num_characters++;
+				ss_characters = realloc(ss_characters, num_characters * sizeof(SDL_Texture *));
+
+				// if (!ss_characters) {
+				// 	allocation failure but idc rn
+				// }
+
+				char path[256] = "./characters/";
+				strcat(path, entry->d_name);
+
+				ss_characters[num_characters - 1] = IMG_LoadTexture(renderer, path);
+
+				if (!ss_characters[num_characters - 1]) {
+					fprintf(stderr, "Could not read ./characters/%s\n", entry->d_name);
+					return 1;
+				}
+
+				printf("Loaded character: %s\n", entry->d_name);
+			}
+		}
+
+		closedir(dir);
 	}
 
 	// print controls
@@ -153,7 +210,7 @@ int main(void) {
 
 	// clean up
 	destroy:
-	SDL_DestroyTexture(spritesheet);
+	SDL_DestroyTexture(ss_level);
 
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);

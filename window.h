@@ -1,6 +1,8 @@
 #ifndef WINDOW_H
 #define WINDOW_H
 
+#include <stdint.h>
+
 // screen size
 #define WIDTH 256
 #define HEIGHT 280
@@ -16,7 +18,9 @@ typedef struct {
 
 } Input;
 
-void draw_sprite(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip);
+void draw_character(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip);
+void draw_level(int index, int x, int y);
+void set_background(uint8_t r, uint8_t g, uint8_t b);
 
 void game_init();
 void game_update(const Input *input);

@@ -22,5 +22,5 @@ void game_update(const Input *input) {
 	if (input->right)
 		px++;
 
-	draw_sprite(16, 16, 0, 0, px, py, 0);
+	draw_character(16, 16, 0, 0, px, py, 0);
 }
