@@ -11,7 +11,7 @@ static SDL_Texture *ss_level;
 
 static SDL_Texture **ss_characters; // array of SDL_Texture *
 static int num_characters;
-static int curr_character; // TODO add a way of changing this value
+static int curr_character;
 
 static uint8_t bg_r, bg_g, bg_b;
 
@@ -186,6 +186,22 @@ int main(void) {
 						break;
 					case SDL_SCANCODE_ESCAPE:
 						goto destroy;
+						break;
+					case SDL_SCANCODE_MINUS: // decrement curr_character
+					case SDL_SCANCODE_LEFTBRACKET:
+						if (event.type != SDL_KEYDOWN)
+							break;
+						curr_character--;
+						if (curr_character == -1)
+							curr_character = num_characters - 1;
+						break;
+					case SDL_SCANCODE_EQUALS: // increment curr_character
+					case SDL_SCANCODE_RIGHTBRACKET:
+						if (event.type != SDL_KEYDOWN)
+							break;
+						curr_character++;
+						if (curr_character == num_characters)
+							curr_character = 0;
 						break;
 					default:
 						break;
