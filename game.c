@@ -1,7 +1,25 @@
 #include "window.h"
 
-static int px = 0;
-static int py = 0;
+typedef struct {
+
+	int ss_off; // vertical offset within sprite sheet
+	int w, h;
+
+	// TODO movement parameters
+
+} CharacterState;
+
+static CharacterState states[] = {
+	{ 0, 32, 32 },
+	{ 96, 32, 32 },
+	{ 192, 48, 48 },
+	{ 336, 64, 48 }
+};
+
+static int curr_state = 0;
+
+static int px = 40;
+static int py = 40;
 
 void game_init() {
 	
@@ -9,6 +27,8 @@ void game_init() {
 }
 
 void game_update(const Input *input) {
+
+	CharacterState state = states[curr_state];
 
 	if (input->up)
 		py--;
@@ -22,5 +42,11 @@ void game_update(const Input *input) {
 	if (input->right)
 		px++;
 
-	draw_character(16, 16, 0, 0, px, py, 0);
+	if (input->action_a_justchanged && input->action_a) {
+		curr_state++;
+		if (curr_state == 4)
+			curr_state = 0;
+	}
+
+	draw_character(state.w, state.h, 0, state.ss_off, px - state.w / 2, py - state.h, 0);
 }

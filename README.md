@@ -2,6 +2,8 @@ simple standalone weightgain platformer with preset levels (like, 4 or something
 
 weightgain mechanic: bar at the top shows how many candies you have to eat before going up a size, getting hit reduces you by a size
 
+placeholder Vivian character by DoubleCap Productions from https://someoneuknow9097.itch.io/smb1r-weight-gain-mod
+
 ## Installation
 
 1. Install dependencies. Windows isn't supported yet because of `<dirent.h>` for directory traversal (windows uses `<windows.h>`).
