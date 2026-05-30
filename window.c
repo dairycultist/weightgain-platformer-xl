@@ -91,6 +91,7 @@ int main(void) {
 			} else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
 
 				#define MIN(a, b) ((a) > (b) ? (b) : (a))
+				#define ASPECT_RATIO (WIDTH / (float) HEIGHT)
 
 				// dynamically change letterbox based on screen resize
 				letterbox.w = MIN(event.window.data1, event.window.data2 * ASPECT_RATIO);

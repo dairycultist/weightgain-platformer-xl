@@ -4,7 +4,6 @@
 // screen size
 #define WIDTH 256
 #define HEIGHT 280
-#define ASPECT_RATIO (WIDTH / (float) HEIGHT)
 
 typedef struct {
 
