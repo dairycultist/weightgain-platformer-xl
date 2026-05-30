@@ -21,12 +21,16 @@ static int curr_state = 0;
 static int px = 40;
 static int py = 40;
 
+static int animt;
+
 void game_init() {
 	
 	set_background(80, 180, 255);
 }
 
 void game_update(const Input *input) {
+
+	animt++;
 
 	CharacterState state = states[curr_state];
 
@@ -48,5 +52,5 @@ void game_update(const Input *input) {
 			curr_state = 0;
 	}
 
-	draw_character(state.w, state.h, 0, state.ss_off, px - state.w / 2, py - state.h, 0);
+	draw_character(state.w, state.h, state.w * (animt / 10 % 4), state.ss_off + state.h, px - state.w / 2, py - state.h, 0);
 }
