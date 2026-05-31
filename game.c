@@ -16,8 +16,8 @@ static CharacterState states[] = {
 	{ 0, 32, 32, 0.1, 0.3, 3.0, -4.0 },
 	{ 128, 32, 32, 0.08, 0.2, 2.5, -4.0 },
 	{ 256, 48, 48, 0.035, 0.1, 2.0, -3.0 },
-	{ 448, 64, 48, 0.02, 0.05, 1.0, -1.0 },
-	{ 640, 96, 48, 0.01, 0.05, 0.5, 0.0 }
+	{ 448, 64, 48, 0.02, 0.05, 1.0, -2.0 },
+	{ 640, 96, 48, 0.01, 0.05, 0.5, -1.0 }
 };
 
 static int curr_state;
@@ -30,6 +30,17 @@ static float animt;
 static int facing_left;
 static int grounded;
 
+#define LEVEL_HEIGHT 13
+
+static int level[] = { // to satisfy spatial locality, level data is stored column-major
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+};
+
 void game_init() {
 	
 	set_background(80, 180, 255);
@@ -37,6 +48,14 @@ void game_init() {
 
 void game_update(const Input *input) {
 
+	// draw level
+	for (int i = 0; i < sizeof(level) / sizeof(int); i++) {
+
+		if (level[i])
+			draw_level(0, (i / LEVEL_HEIGHT) * 16, 72 + (i % LEVEL_HEIGHT) * 16);
+	}
+
+	// temp size-changing
 	if (input->action_b_justchanged && input->action_b) {
 		curr_state++;
 		if (curr_state == sizeof(states) / sizeof(CharacterState))
@@ -45,6 +64,7 @@ void game_update(const Input *input) {
 
 	CharacterState state = states[curr_state];
 
+	// running
 	if (!input->left && !input->right) {
 
 		pdx *= 0.95;
@@ -100,14 +120,14 @@ void game_update(const Input *input) {
 	if (input->down) {
 
 		anim_x = 0;
-		anim_y = 3 * state.w;
+		anim_y = 3 * state.h;
 
 	} else if (!grounded) {
 
-		if (pdy > 1.5) {
+		if (pdy > -state.jump_speed / 2.7) {
 			anim_x = 2 * state.w;
 			anim_y = 2 * state.h;
-		} else if (pdy < -1.5) {
+		} else if (pdy < state.jump_speed / 2.7) {
 			anim_x = 0;
 			anim_y = 2 * state.h;
 		} else {
