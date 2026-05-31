@@ -5,23 +5,29 @@ typedef struct {
 	int ss_off; // vertical offset within sprite sheet
 	int w, h;
 
-	// TODO movement parameters
+	float run_acceleration;
+	float run_deceleration; // higher for quick turning
+	float max_run_speed;
+	float jump_speed;
 
 } CharacterState;
 
 static CharacterState states[] = {
-	{ 0, 32, 32 },
-	{ 96, 32, 32 },
-	{ 192, 48, 48 },
-	{ 336, 64, 48 }
+	{ 0, 32, 32, 0.1, 0.3, 3.0, -4.0 },
+	{ 128, 32, 32, 0.08, 0.2, 2.5, -4.0 },
+	{ 256, 48, 48, 0.035, 0.1, 2.0, -3.0 },
+	{ 448, 64, 48, 0.02, 0.05, 1.0, -1.0 }
 };
 
-static int curr_state = 0;
+static int curr_state;
 
-static int px = 40;
-static int py = 40;
+static float px = 40.0, py = 40.0;
+static float pdx, pdy;
 
-static int animt;
+static float animt;
+
+static int facing_left;
+static int grounded;
 
 void game_init() {
 	
@@ -30,27 +36,97 @@ void game_init() {
 
 void game_update(const Input *input) {
 
-	animt++;
-
-	CharacterState state = states[curr_state];
-
-	if (input->up)
-		py--;
-
-	if (input->down)
-		py++;
-
-	if (input->left)
-		px--;
-
-	if (input->right)
-		px++;
-
-	if (input->action_a_justchanged && input->action_a) {
+	if (input->action_b_justchanged && input->action_b) {
 		curr_state++;
 		if (curr_state == 4)
 			curr_state = 0;
 	}
 
-	draw_character(state.w, state.h, state.w * (animt / 10 % 4), state.ss_off + state.h, px - state.w / 2, py - state.h, 0);
+	CharacterState state = states[curr_state];
+
+	if (!input->left && !input->right) {
+
+		pdx *= 0.95;
+
+	} else if (!grounded || !input->down) {
+
+		if (input->left) {
+			facing_left = 1;
+			pdx -= pdx > 0 ? state.run_deceleration : state.run_acceleration;
+			if (-pdx > state.max_run_speed)
+				pdx = -state.max_run_speed;
+		}
+
+		if (input->right) {
+			facing_left = 0;
+			pdx += pdx < 0 ? state.run_deceleration : state.run_acceleration;
+			if (pdx > state.max_run_speed)
+				pdx = state.max_run_speed;
+		}
+
+	} else {
+		
+		pdx *= 0.95;
+	}
+
+	// gravity
+	pdy += 0.2;
+
+	// apply velocity
+	px += pdx;
+	py += pdy;
+
+	// collision
+	if (py > 100) {
+		py = 100;
+		pdy = 1;
+		grounded = 1;
+	} else {
+		grounded = 0;
+	}
+
+	// jump
+	if (grounded && input->action_a_justchanged && input->action_a) {
+		pdy = state.jump_speed;
+		grounded = 0;
+	}
+
+	// determine animation
+	// TODO turning animation occurs when, say, facing left but moving right
+
+	int anim_x, anim_y;
+
+	if (input->down) {
+
+		anim_x = 0;
+		anim_y = 3 * state.w;
+
+	} else if (!grounded) {
+
+		if (pdy > 1.5) {
+			anim_x = 2 * state.w;
+			anim_y = 2 * state.h;
+		} else if (pdy < -1.5) {
+			anim_x = 0;
+			anim_y = 2 * state.h;
+		} else {
+			anim_x = state.w;
+			anim_y = 2 * state.h;
+		}
+		
+	} else if (pdx < state.run_acceleration && pdx > -state.run_acceleration) {
+
+		// TODO idle animation
+		anim_x = 0;
+		anim_y = 0;
+
+	} else {
+
+		anim_x = (int) animt % 4 * state.w;
+		anim_y = state.h;
+	}
+
+	draw_character(state.w, state.h, anim_x, anim_y + state.ss_off, (int) px - state.w / 2, (int) py - state.h, facing_left);
+
+	animt += (pdx > 0 ? pdx : -pdx) * 0.1;
 }
