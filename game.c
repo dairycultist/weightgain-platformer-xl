@@ -13,10 +13,10 @@ typedef struct {
 } CharacterState;
 
 static CharacterState states[] = {
-	{ 0, 32, 32, 0.1, 0.3, 3.0, -4.0 },
-	{ 128, 32, 32, 0.08, 0.2, 2.5, -4.0 },
-	{ 256, 48, 48, 0.035, 0.1, 2.0, -3.0 },
-	{ 448, 64, 48, 0.02, 0.05, 1.0, -2.0 },
+	{ 0, 32, 32, 0.1, 0.3, 3.0, -5.5 },
+	{ 128, 32, 32, 0.08, 0.2, 2.5, -5.5 },
+	{ 256, 48, 48, 0.035, 0.1, 2.0, -4.0 },
+	{ 448, 64, 48, 0.02, 0.05, 1.0, -3.0 },
 	{ 640, 96, 48, 0.01, 0.05, 0.5, -1.0 }
 };
 
@@ -41,9 +41,9 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -65,7 +65,7 @@ void game_update(const Input *input) {
 			draw_level(0, (i / LEVEL_HEIGHT) * 16, 72 + (i % LEVEL_HEIGHT) * 16);
 	}
 
-	draw_text("life.5       world 1-1", 2, 2);
+	draw_text("vivian.5       world 1-1", 2, 2);
 
 	// temp size-changing
 	if (input->action_b_justchanged && input->action_b) {
@@ -102,6 +102,17 @@ void game_update(const Input *input) {
 		pdx *= 0.95;
 	}
 
+	// jump
+	if (grounded && input->action_a_justchanged && input->action_a) {
+		pdy = state.jump_speed;
+		grounded = 0;
+	}
+
+	// early release jump
+	if (pdy < 0 && input->action_a_justchanged && !input->action_a) {
+		pdy /= 2;
+	}
+
 	// gravity
 	pdy += 0.2;
 
@@ -115,12 +126,6 @@ void game_update(const Input *input) {
 		pdy = 1;
 		grounded = 1;
 	} else {
-		grounded = 0;
-	}
-
-	// jump
-	if (grounded && input->action_a_justchanged && input->action_a) {
-		pdy = state.jump_speed;
 		grounded = 0;
 	}
 
