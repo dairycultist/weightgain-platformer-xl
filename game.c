@@ -123,8 +123,6 @@ void game_update(const Input *input) {
 	}
 
 	// determine animation
-	// TODO turning animation occurs when, say, facing left but moving right
-
 	int anim_x, anim_y;
 
 	if (input->down) {
@@ -151,6 +149,11 @@ void game_update(const Input *input) {
 		anim_x = 0;
 		anim_y = 0;
 
+	} else if (facing_left == pdx > 0) { // turning animation occurs when, say, facing left but moving right
+	
+		anim_x = state.w;
+		anim_y = 3 * state.h;
+	
 	} else {
 
 		anim_x = (int) animt % 4 * state.w;
