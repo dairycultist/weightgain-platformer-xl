@@ -22,7 +22,7 @@ static CharacterState states[] = {
 
 static int curr_state;
 
-static float px = 40.0, py = 40.0;
+static float px = 64.0, py = 240.0;
 static float pdx, pdy;
 
 static float animt;
@@ -51,6 +51,52 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 };
 
+static int player_is_colliding() {
+
+	CharacterState state = states[curr_state];
+
+	int start_x = (px - state.w / 2) / 16;
+	int start_y = (py - state.h - 72) / 16;
+
+	if (start_y < 0)
+		start_y = 0;
+
+	for (int x = start_x; x < start_x + (state.w / 16); x++) {
+
+		for (int y = start_y; y < start_y + (state.h / 16); y++) {
+
+			if (level[y + x * LEVEL_HEIGHT])
+				return 1;
+		}
+	}
+
+	// far positive edges is unique because math
+	start_y = (py - 1 - state.h - 72) / 16;
+
+	for (int x = start_x; x < start_x + (state.w / 16); x++) {
+
+		if (level[start_y + (state.h / 16) + x * LEVEL_HEIGHT])
+			return 1;
+	}
+
+	start_x = (px - 1 - state.w / 2) / 16;
+	start_y = (py - state.h - 72) / 16;
+
+	for (int y = start_y; y < start_y + (state.h / 16); y++) {
+
+		if (level[y + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
+			return 1;
+	}
+
+	// and the far positive corner
+	start_y = (py - 1 - state.h - 72) / 16;
+	
+	if (level[start_y + (state.h / 16) + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
+		return 1;
+
+	return 0;
+}
+
 void game_init() {
 	
 	set_background(80, 180, 255);
@@ -72,6 +118,9 @@ void game_update(const Input *input) {
 		curr_state++;
 		if (curr_state == sizeof(states) / sizeof(CharacterState))
 			curr_state = 0;
+
+		while (player_is_colliding())
+			py--;
 	}
 
 	CharacterState state = states[curr_state];
@@ -116,16 +165,31 @@ void game_update(const Input *input) {
 	// gravity
 	pdy += 0.2;
 
-	// apply velocity
+	// apply velocity while respecting collision
 	px += pdx;
+
+	if (player_is_colliding()) {
+
+		do {
+			px -= pdx * 0.1;
+		} while (player_is_colliding());
+
+		pdx = 0;
+	}
+
 	py += pdy;
 
-	// collision
-	if (py > 248) {
-		py = 248;
-		pdy = 1;
+	if (player_is_colliding()) {
+
+		do {
+			py -= pdy * 0.1;
+		} while (player_is_colliding());
+
 		grounded = 1;
+		pdy = 1;
+
 	} else {
+
 		grounded = 0;
 	}
 
