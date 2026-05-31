@@ -65,7 +65,7 @@ void game_update(const Input *input) {
 			draw_level(0, (i / LEVEL_HEIGHT) * 16, 72 + (i % LEVEL_HEIGHT) * 16);
 	}
 
-	draw_text("test", 2, 2);
+	draw_text("life.5       world 1-1", 2, 2);
 
 	// temp size-changing
 	if (input->action_b_justchanged && input->action_b) {

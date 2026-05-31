@@ -43,9 +43,24 @@ void draw_text(const char *string, int x, int y) {
 
 	while (*string != '\0') {
 
+		int i = -1;
+
 		if (*string >= 'a' && *string <= 'z') {
 
-			SDL_Rect copy_rect = { (*string - 'a') * 6, 0, 6, 6 };
+			i = *string - 'a';
+
+		} else if (*string >= '0' && *string <= '9') {
+
+			i = *string - '0' + 26;
+
+		} else if (*string == '-' || *string == '.') {
+
+			i = *string - '-' + 36;
+		}
+
+		if (i != -1) {
+
+			SDL_Rect copy_rect = { i * 6, 0, 6, 6 };
 			SDL_Rect paste_rect = { x, y, 6, 6 };
 
 			SDL_RenderCopyEx(renderer, ss_font, &copy_rect, &paste_rect, 0.0, NULL, SDL_FLIP_NONE);
