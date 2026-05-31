@@ -8,6 +8,7 @@ static SDL_Renderer *renderer;
 static SDL_Texture *screen_buffer;
 
 static SDL_Texture *ss_level;
+static SDL_Texture *ss_font;
 
 static SDL_Texture **ss_characters; // array of SDL_Texture *
 static int num_characters;
@@ -36,6 +37,24 @@ void draw_level(int index, int x, int y) {
 	SDL_Rect paste_rect = { x, y, 16, 16 };
 
 	SDL_RenderCopyEx(renderer, ss_level, &copy_rect, &paste_rect, 0.0, NULL, SDL_FLIP_NONE);
+}
+
+void draw_text(const char *string, int x, int y) {
+
+	while (*string != '\0') {
+
+		if (*string >= 'a' && *string <= 'z') {
+
+			SDL_Rect copy_rect = { (*string - 'a') * 6, 0, 6, 6 };
+			SDL_Rect paste_rect = { x, y, 6, 6 };
+
+			SDL_RenderCopyEx(renderer, ss_font, &copy_rect, &paste_rect, 0.0, NULL, SDL_FLIP_NONE);
+		}
+
+		x += 6;
+
+		string++;
+	}
 }
 
 int main(void) {
@@ -70,6 +89,13 @@ int main(void) {
 
 	if (!ss_level) {
 		fprintf(stderr, "Could not read level.png\n");
+		return 1;
+	}
+
+	ss_font = IMG_LoadTexture(renderer, "font.png");
+
+	if (!ss_font) {
+		fprintf(stderr, "Could not read font.png\n");
 		return 1;
 	}
 
