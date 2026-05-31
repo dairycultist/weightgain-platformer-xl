@@ -148,11 +148,13 @@ void game_update(const Input *input) {
 		// TODO idle animation
 		anim_x = 0;
 		anim_y = 0;
+		animt = 0;
 
 	} else if (facing_left == pdx > 0) { // turning animation occurs when, say, facing left but moving right
 	
 		anim_x = state.w;
 		anim_y = 3 * state.h;
+		animt = 0;
 	
 	} else {
 
