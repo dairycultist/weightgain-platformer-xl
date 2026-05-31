@@ -145,7 +145,7 @@ void game_update(const Input *input) {
 			anim_y = 2 * state.h;
 		}
 		
-	} else if (pdx < state.run_acceleration && pdx > -state.run_acceleration) {
+	} else if (!input->left && !input->right && pdx < state.run_acceleration && pdx > -state.run_acceleration) {
 
 		// TODO idle animation
 		anim_x = 0;
