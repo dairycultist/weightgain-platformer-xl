@@ -16,7 +16,8 @@ static CharacterState states[] = {
 	{ 0, 32, 32, 0.1, 0.3, 3.0, -4.0 },
 	{ 128, 32, 32, 0.08, 0.2, 2.5, -4.0 },
 	{ 256, 48, 48, 0.035, 0.1, 2.0, -3.0 },
-	{ 448, 64, 48, 0.02, 0.05, 1.0, -1.0 }
+	{ 448, 64, 48, 0.02, 0.05, 1.0, -1.0 },
+	{ 640, 96, 48, 0.01, 0.05, 0.5, 0.0 }
 };
 
 static int curr_state;
@@ -38,7 +39,7 @@ void game_update(const Input *input) {
 
 	if (input->action_b_justchanged && input->action_b) {
 		curr_state++;
-		if (curr_state == 4)
+		if (curr_state == sizeof(states) / sizeof(CharacterState))
 			curr_state = 0;
 	}
 
