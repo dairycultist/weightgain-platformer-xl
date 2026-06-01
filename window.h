@@ -20,6 +20,7 @@ typedef struct {
 
 void draw_character(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip);
 void draw_level(int index, int x, int y);
+void draw_level_flip(int index, int x, int y, int flip);
 void draw_text(const char *string, int x, int y);
 void set_background(uint8_t r, uint8_t g, uint8_t b);
 

@@ -39,6 +39,14 @@ void draw_level(int index, int x, int y) {
 	SDL_RenderCopyEx(renderer, ss_level, &copy_rect, &paste_rect, 0.0, NULL, SDL_FLIP_NONE);
 }
 
+void draw_level_flip(int index, int x, int y, int flip) {
+
+	SDL_Rect copy_rect = { (index % 16) * 16, (index / 16) * 16, 16, 16 };
+	SDL_Rect paste_rect = { x, y, 16, 16 };
+
+	SDL_RenderCopyEx(renderer, ss_level, &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+}
+
 void draw_text(const char *string, int x, int y) {
 
 	while (*string != '\0') {

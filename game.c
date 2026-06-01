@@ -1,5 +1,23 @@
 #include "window.h"
 
+// three enemies: goomba-like (walks off platforms), red-koopa-like (doesn't),
+// and fire-sprite-from-smb3-like (jumps towards player, imma make it a frog)
+
+// entity data (enemies, particles, etc)
+//
+#define NULL_T 0
+#define BROKEN_T 1
+
+typedef struct {
+
+	int type;
+	float x, y;
+	float dx, dy;
+
+} Entity;
+
+static Entity entities[32] = {}; // first come, first serve
+
 // player data
 //
 typedef struct {
@@ -22,25 +40,27 @@ const static CharacterState states[] = {
 	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -3.5 },
 	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -2.5 }
 };
-static CharacterState curr_state = states[0];
-static int curr_state_i = 0;
+static CharacterState curr_state;
+static int curr_state_i;
 
 static float p_x, p_y;
 static float p_dx, p_dy;
+
+static int candy_count;
+static int cam_off;
+static int facing_left;
 
 #define JUMP_LEEWAY 6
 static int t_since_jump = 30; // for input-caching
 static int t_since_grounded = 0; // for coyote-time
 
 static float p_animt;
-static int candy_count;
-static int cam_off;
-static int facing_left;
 
 // level data
 //
 #define LEVEL_HEIGHT 13
 #define LEVEL_WIDTH (sizeof(level) / sizeof(int) / LEVEL_HEIGHT)
+#define LEVEL_Y_OFFSET (HEIGHT - LEVEL_HEIGHT * 16)
 
 #define IS_COLLIDABLE(i) (i == 1 || i == 2)
 
@@ -159,33 +179,34 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
 // static helper functions
 //
+static void add_entity(Entity e) { // might fail but doesn't matter
+
+	for (int i = 0; i < sizeof(entities) / sizeof(Entity); i++) {
+
+		if (entities[i].type == NULL_T) {
+
+			entities[i] = e;
+			return;
+		}
+	}
+}
+
 static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *end_y) {
 
 	#define FLOOR(v) ((v) >= 0 || (v) == (int) (v) ? ((int) (v)) : ((int) (v) - 1))
 
-	*start_x = FLOOR((p_x - curr_state.col_w / 2) / 16);
-	*start_y = FLOOR((p_y - curr_state.col_h - (HEIGHT - LEVEL_HEIGHT * 16)) / 16);
+	*start_x = FLOOR((p_x - curr_state.col_w / 2) / 16.0);
+	*start_y = FLOOR((p_y - curr_state.col_h - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = FLOOR((p_x - 1 + curr_state.col_w / 2) / 16);
-	*end_y = FLOOR((p_y - 1 - 72) / 16);
+	*end_x = FLOOR((p_x - 1 + curr_state.col_w / 2) / 16.0);
+	*end_y = FLOOR((p_y - 1 - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*end_y > LEVEL_HEIGHT - 1)
 		*end_y = LEVEL_HEIGHT - 1;
@@ -218,6 +239,34 @@ static int player_is_colliding() {
 	return 0;
 }
 
+static void restart_level() { // e.g. on first start; on death
+
+	// TODO show level intro screen (or just set an animation flag to do so)
+
+	// TODO (re)load level
+
+	curr_state_i = 0;
+	curr_state = states[0];
+
+	p_x = 48.0;
+	p_y = 248.0;
+	p_dx = 0.0;
+	p_dy = 0.0;
+
+	candy_count = 0;
+	cam_off = 0;
+	facing_left = 0;
+	
+	set_background(100, 200, 255);
+}
+
+static void increase_level() { // e.g. on stage win
+
+	// TODO increase level!
+
+	restart_level();
+}
+
 static void increase_state() {
 
 	if (curr_state_i == sizeof(states) / sizeof(CharacterState) - 1)
@@ -244,13 +293,16 @@ static void increase_state() {
 //
 void game_init() {
 
-	p_x = 48.0;
-	p_y = 200.0;
-	
-	set_background(100, 200, 255);
+	restart_level();
 }
 
 void game_update(const Input *input) {
+
+	// falling into pit
+	if (p_y - curr_state.col_h - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
+
+		restart_level();
+	}
 
 	// update camera offset
 	if (p_x + 127.5 > LEVEL_WIDTH * 16) {
@@ -291,6 +343,26 @@ void game_update(const Input *input) {
 		}
 
 		draw_level(sprite, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
+	}
+
+	// process/draw entities
+	for (int i = 0; i < sizeof(entities) / sizeof(Entity); i++) {
+
+		switch (entities[i].type) {
+
+			case BROKEN_T:
+				entities[i].dy += 0.2; // gravity
+				entities[i].x += entities[i].dx;
+				entities[i].y += entities[i].dy;
+				draw_level_flip(17, entities[i].x - cam_off, entities[i].y + LEVEL_Y_OFFSET, ((level_animt + i * 4) / 12) % 2);
+
+				if (entities[i].y > LEVEL_HEIGHT * 16)
+					entities[i].type = NULL_T;
+				break;
+
+			default:
+				break;
+		}
 	}
 
 	// running
@@ -366,6 +438,12 @@ void game_update(const Input *input) {
 
 					level[y + significant_x * LEVEL_HEIGHT] = 0;
 					broke_something = 1;
+
+					// broken tile particles
+					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16, -1.0, -3.0 });
+					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16,  1.0, -3.0 });
+					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16, -1.0,  0.0 });
+					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16,  1.0,  0.0 });
 				}
 			}
 
@@ -405,6 +483,12 @@ void game_update(const Input *input) {
 
 					level[start_y + x * LEVEL_HEIGHT] = 0;
 					broke_something = 1;
+
+					// broken tile particles
+					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16, -1.0, -3.0 });
+					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16,  1.0, -3.0 });
+					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16, -1.0,  0.0 });
+					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16,  1.0,  0.0 });
 				}
 			}
 
