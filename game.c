@@ -48,9 +48,18 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 3, 0, 0, 1, 0, 3, 0, 1, 1,
-	0, 0, 0, 0, 3, 0, 0, 1, 0, 3, 0, 1, 1,
-	0, 0, 0, 0, 3, 0, 0, 1, 0, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 3, 0, 0, 2, 0, 3, 0, 1, 1,
+	0, 0, 0, 0, 3, 0, 0, 2, 0, 3, 0, 1, 1,
+	0, 0, 0, 0, 3, 0, 0, 2, 0, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -62,6 +71,7 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
@@ -147,13 +157,13 @@ void game_init() {
 void game_update(const Input *input) {
 
 	// update camera offset
-	if (p_x + 128 > LEVEL_WIDTH * 16) {
+	if (p_x + 127.5 > LEVEL_WIDTH * 16) {
 		
 		cam_off = LEVEL_WIDTH * 16 - WIDTH;
 
-	} else if (cam_off < p_x - 128) {
+	} else if (cam_off < p_x - 127.5) {
 
-		cam_off = p_x - 128;
+		cam_off = p_x - 127.5;
 	}
 
 	// draw level
@@ -241,12 +251,40 @@ void game_update(const Input *input) {
 
 	if (player_is_colliding()) {
 
+		// breakable tile breaking
+		if (p_dy < 0 || curr_state_i >= 2) {
+
+			int start_x, start_y, end_x, end_y;
+			get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+			int significant_y = p_dy > 0 ? end_y : start_y;
+			int broke_something = 0;
+
+			for (int x = start_x; x <= end_x; x++) {
+
+				if (level[significant_y + x * LEVEL_HEIGHT] == 2) {
+
+					level[significant_y + x * LEVEL_HEIGHT] = 0;
+					broke_something = 1;
+				}
+			}
+
+			if (broke_something) {
+
+				p_dy = p_dy < 0 ? 1.0 : -1.5;
+				goto skip_vertical_col;
+			}
+		}
+
+		// actually do the collision repositioning
 		do {
 			p_y -= p_dy * 0.1;
 		} while (player_is_colliding());
 
 		grounded = 1;
 		p_dy = 1;
+
+		skip_vertical_col:
 
 	} else {
 
@@ -301,7 +339,6 @@ void game_update(const Input *input) {
 
 	// collect candy
 	int start_x, start_y, end_x, end_y;
-	
 	get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
 
 	for (int x = start_x; x <= end_x; x++) {
@@ -313,7 +350,7 @@ void game_update(const Input *input) {
 				candy_count++;
 				level[y + x * LEVEL_HEIGHT] = 0;
 
-				if (candy_count == 5) {
+				if (candy_count == 10) {
 
 					candy_count = 0;
 					increase_state();
