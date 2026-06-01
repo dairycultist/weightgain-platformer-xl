@@ -1,5 +1,7 @@
 #include "window.h"
 
+// player data
+//
 typedef struct {
 
 	int ss_off; // vertical offset within sprite sheet
@@ -20,7 +22,6 @@ const static CharacterState states[] = {
 	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -3.5 },
 	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -2.5 }
 };
-
 static CharacterState curr_state = states[0];
 static int curr_state_i = 0;
 
@@ -31,14 +32,13 @@ static float p_dx, p_dy;
 static int t_since_jump = 30; // for input-caching
 static int t_since_grounded = 0; // for coyote-time
 
-static int candy_count;
-
-static int cam_off;
-
 static float p_animt;
-
+static int candy_count;
+static int cam_off;
 static int facing_left;
 
+// level data
+//
 #define LEVEL_HEIGHT 13
 #define LEVEL_WIDTH (sizeof(level) / sizeof(int) / LEVEL_HEIGHT)
 
@@ -159,26 +159,39 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
+// static helper functions
+//
 static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *end_y) {
 
-	*start_x = (p_x - curr_state.col_w / 2) / 16;
-	*start_y = (p_y - curr_state.col_h - 72) / 16;
+	#define FLOOR(v) ((v) >= 0 || (v) == (int) (v) ? ((int) (v)) : ((int) (v) - 1))
+
+	*start_x = FLOOR((p_x - curr_state.col_w / 2) / 16);
+	*start_y = FLOOR((p_y - curr_state.col_h - (HEIGHT - LEVEL_HEIGHT * 16)) / 16);
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = (p_x - 1 + curr_state.col_w / 2) / 16;
-	*end_y = (p_y - 1 - 72) / 16;
+	*end_x = FLOOR((p_x - 1 + curr_state.col_w / 2) / 16);
+	*end_y = FLOOR((p_y - 1 - 72) / 16);
 
 	if (*end_y > LEVEL_HEIGHT - 1)
 		*end_y = LEVEL_HEIGHT - 1;
 }
 
 static int player_is_colliding() {
-
-	// TODO there's a collision bug at the top of the level where you can't pass tiles...
 
 	// colliding with left side of screen?
 	if ((int) p_x - curr_state.col_w / 2 < cam_off)
@@ -227,6 +240,8 @@ static void increase_state() {
 		p_y--;
 }
 
+// game logic functions
+//
 void game_init() {
 
 	p_x = 48.0;
@@ -277,12 +292,6 @@ void game_update(const Input *input) {
 
 		draw_level(sprite, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
 	}
-
-	draw_level(2, 2, 2);
-
-	char candy_text[] = ".\0"; // TODO "world 1-1"
-	candy_text[1] = candy_count + '0';
-	draw_text(candy_text, 17, 8);
 
 	// running
 	if (!input->left && !input->right) {
@@ -482,4 +491,11 @@ void game_update(const Input *input) {
 			}
 		}
 	}
+
+	// HUD
+	draw_level(2, 2, 2);
+
+	char candy_text[] = ".\0"; // TODO "world 1-1"
+	candy_text[1] = candy_count + '0';
+	draw_text(candy_text, 17, 8);
 }
