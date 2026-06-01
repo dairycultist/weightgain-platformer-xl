@@ -14,7 +14,7 @@ typedef struct {
 
 static CharacterState states[] = {
 	{ 0, 32, 32, 0.1, 0.3, 3.0, -5.5 },
-	{ 128, 32, 32, 0.08, 0.2, 2.5, -5.5 },
+	{ 128, 32, 32, 0.05, 0.15, 2.5, -5.5 },
 	{ 256, 48, 48, 0.035, 0.1, 2.0, -4.0 },
 	{ 448, 64, 48, 0.02, 0.05, 1.0, -3.0 },
 	{ 640, 96, 48, 0.01, 0.05, 0.5, -1.0 }
@@ -22,8 +22,10 @@ static CharacterState states[] = {
 
 static int curr_state;
 
-static float px = 64.0, py = 240.0;
+static float px, py;
 static float pdx, pdy;
+
+static int cam_off;
 
 static float animt;
 
@@ -39,12 +41,23 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -56,11 +69,8 @@ static int player_is_colliding() {
 
 	CharacterState state = states[curr_state];
 
-	// with the horizontal level boundaries (not vertical!)
-	if (px - state.w / 2 < 0)
-		return 1;
-
-	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
+	// with left side of screen
+	if (px - state.w / 2 < cam_off)
 		return 1;
 
 	// with the level
@@ -80,36 +90,26 @@ static int player_is_colliding() {
 	}
 
 	// far positive edges is unique because math
-	start_y = (py - 1 - state.h - 72) / 16;
+	int farstart_x = (px - 1 - state.w / 2) / 16;
+	int farstart_y = (py - 1 - state.h - 72) / 16;
 
-	if (start_y < 0)
-		start_y = 0;
+	if (farstart_y < 0)
+		farstart_y = 0;
 
 	for (int x = start_x; x < start_x + (state.w / 16); x++) {
 
-		if (level[start_y + (state.h / 16) + x * LEVEL_HEIGHT])
+		if (level[farstart_y + (state.h / 16) + x * LEVEL_HEIGHT])
 			return 1;
 	}
 
-	start_x = (px - 1 - state.w / 2) / 16;
-	start_y = (py - state.h - 72) / 16;
-
-	if (start_y < 0)
-		start_y = 0;
-
 	for (int y = start_y; y < start_y + (state.h / 16); y++) {
 
-		if (level[y + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
+		if (level[y + (farstart_x + (state.w / 16)) * LEVEL_HEIGHT])
 			return 1;
 	}
 
 	// and the far positive corner
-	start_y = (py - 1 - state.h - 72) / 16;
-
-	if (start_y < 0)
-		start_y = 0;
-
-	if (level[start_y + (state.h / 16) + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
+	if (level[farstart_y + (state.h / 16) + (farstart_x + (state.w / 16)) * LEVEL_HEIGHT])
 		return 1;
 
 	return 0;
@@ -124,12 +124,9 @@ static void increase_state() {
 
 	CharacterState state = states[curr_state];
 
-	// prevent clipping into horizontal level boundaries
-	if (px < state.w / 2)
-		px = state.w / 2;
-
-	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
-		px = LEVEL_WIDTH * 16 - state.w / 2;
+	// prevent clipping into left side of screen
+	if (px - state.w / 2 < cam_off)
+		px = state.w / 2 + cam_off;
 
 	// prevent clipping into a tile
 	while (player_is_colliding())
@@ -137,17 +134,30 @@ static void increase_state() {
 }
 
 void game_init() {
+
+	px = 48.0;
+	py = 248.0;
 	
 	set_background(80, 180, 255);
 }
 
 void game_update(const Input *input) {
 
+	// update camera offset
+	if (px + 128 > LEVEL_WIDTH * 16) {
+		
+		cam_off = LEVEL_WIDTH * 16 - WIDTH;
+
+	} else if (cam_off < px - 128) {
+
+		cam_off = px - 128;
+	}
+
 	// draw level
 	for (int i = 0; i < sizeof(level) / sizeof(int); i++) {
 
 		if (level[i])
-			draw_level(0, (i / LEVEL_HEIGHT) * 16, 72 + (i % LEVEL_HEIGHT) * 16);
+			draw_level(0, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
 	}
 
 	draw_text("vivian.5       world 1-1", 2, 2);
@@ -254,7 +264,7 @@ void game_update(const Input *input) {
 		anim_y = 0;
 		animt = 0;
 
-	} else if (pdx > -0.01 && pdx < 0.01 && facing_left == pdx > 0) { // turning animation occurs when, say, facing left but moving right
+	} else if (facing_left == pdx > 0) { // turning animation occurs when facing left but moving right (or opposite)
 	
 		anim_x = state.w;
 		anim_y = 3 * state.h;
@@ -266,7 +276,7 @@ void game_update(const Input *input) {
 		anim_y = state.h;
 	}
 
-	draw_character(state.w, state.h, anim_x, anim_y + state.ss_off, (int) px - state.w / 2, (int) py - state.h, facing_left);
+	draw_character(state.w, state.h, anim_x, anim_y + state.ss_off, (int) px - state.w / 2 - cam_off, (int) py - state.h, facing_left);
 
 	animt += (pdx > 0 ? pdx : -pdx) * 0.1;
 }
