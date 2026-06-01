@@ -73,6 +73,10 @@ static int player_is_colliding() {
 	if (px - state.w / 2 < cam_off)
 		return 1;
 
+	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
+	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
+		return 1;
+
 	// with the level
 	int start_x = (px - state.w / 2) / 16;
 	int start_y = (py - state.h - 72) / 16;
@@ -128,6 +132,10 @@ static void increase_state() {
 	if (px - state.w / 2 < cam_off)
 		px = state.w / 2 + cam_off;
 
+	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
+	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
+		px = LEVEL_WIDTH * 16 - state.w / 2;
+
 	// prevent clipping into a tile
 	while (player_is_colliding())
 		py--;
@@ -162,7 +170,7 @@ void game_update(const Input *input) {
 
 	draw_text("vivian.5       world 1-1", 2, 2);
 
-	// temp size-changing
+	// TEMP size-changing
 	if (input->action_b_justchanged && input->action_b)
 		increase_state();
 
