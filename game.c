@@ -16,9 +16,9 @@ typedef struct {
 const static CharacterState states[] = {
 	{ 0, 32, 32, 24, 32, 0.1, 0.3, 3.0, -5.0 },
 	{ 128, 32, 32, 24, 32, 0.05, 0.15, 2.5, -5.0 },
-	{ 256, 48, 48, 40, 32, 0.035, 0.1, 2.0, -4.5 },
-	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -2.5 },
-	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -1.0 }
+	{ 256, 48, 48, 40, 32, 0.035, 0.1, 2.0, -4.7 },
+	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -3.5 },
+	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -2.5 }
 };
 
 static CharacterState curr_state = states[0];
@@ -50,7 +50,7 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -153,7 +153,7 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 };
@@ -176,11 +176,11 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 static int player_is_colliding() {
 
 	// colliding with left side of screen?
-	if (p_x - curr_state.col_w / 2 < cam_off)
+	if ((int) p_x - curr_state.col_w / 2 < cam_off)
 		return 1;
 
 	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
+	if ((int) p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
 		return 1;
 
 	// colliding with the level?
@@ -245,24 +245,32 @@ void game_update(const Input *input) {
 	// draw level
 	for (int i = 0; i < sizeof(level) / sizeof(int); i++) {
 
+		int sprite;
+
 		switch (level[i]) {
 
 			default:
 			case 0:
-				break;
+				continue;
 			
 			case 1: // unbreakable tile
-				draw_level(0, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
+				sprite = 0;
 				break;
 			
 			case 2: // breakable tile
-				draw_level(1, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
+				sprite = 1;
 				break;
 			
 			case 3: // candy
-				draw_level(2 + ((level_animt / 16) % 4), (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
+				sprite = 2 + ((level_animt / 16) % 4);
+				break;
+
+			case 4: // sign
+				sprite = 6;
 				break;
 		}
+
+		draw_level(sprite, (i / LEVEL_HEIGHT) * 16 - cam_off, 72 + (i % LEVEL_HEIGHT) * 16);
 	}
 
 	draw_level(2, 2, 2);
@@ -343,7 +351,7 @@ void game_update(const Input *input) {
 			if (broke_something) {
 
 				p_dx = p_dx < 0 ? 1.0 : -1.0;
-				p_dy = -1.5;
+				p_dy = -0.5;
 				goto skip_horizontal;
 			}
 		}
