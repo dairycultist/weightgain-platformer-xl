@@ -31,6 +31,7 @@ static int facing_left;
 static int grounded;
 
 #define LEVEL_HEIGHT 13
+#define LEVEL_WIDTH (sizeof(level) / sizeof(int) / LEVEL_HEIGHT)
 
 static int level[] = { // to satisfy spatial locality, level data is stored column-major
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -55,6 +56,14 @@ static int player_is_colliding() {
 
 	CharacterState state = states[curr_state];
 
+	// with the horizontal level boundaries (not vertical!)
+	if (px - state.w / 2 < 0)
+		return 1;
+
+	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
+		return 1;
+
+	// with the level
 	int start_x = (px - state.w / 2) / 16;
 	int start_y = (py - state.h - 72) / 16;
 
@@ -73,6 +82,9 @@ static int player_is_colliding() {
 	// far positive edges is unique because math
 	start_y = (py - 1 - state.h - 72) / 16;
 
+	if (start_y < 0)
+		start_y = 0;
+
 	for (int x = start_x; x < start_x + (state.w / 16); x++) {
 
 		if (level[start_y + (state.h / 16) + x * LEVEL_HEIGHT])
@@ -82,6 +94,9 @@ static int player_is_colliding() {
 	start_x = (px - 1 - state.w / 2) / 16;
 	start_y = (py - state.h - 72) / 16;
 
+	if (start_y < 0)
+		start_y = 0;
+
 	for (int y = start_y; y < start_y + (state.h / 16); y++) {
 
 		if (level[y + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
@@ -90,11 +105,35 @@ static int player_is_colliding() {
 
 	// and the far positive corner
 	start_y = (py - 1 - state.h - 72) / 16;
-	
+
+	if (start_y < 0)
+		start_y = 0;
+
 	if (level[start_y + (state.h / 16) + (start_x + (state.w / 16)) * LEVEL_HEIGHT])
 		return 1;
 
 	return 0;
+}
+
+static void increase_state() {
+
+	curr_state++;
+	
+	if (curr_state == sizeof(states) / sizeof(CharacterState))
+		curr_state = 0;
+
+	CharacterState state = states[curr_state];
+
+	// prevent clipping into horizontal level boundaries
+	if (px < state.w / 2)
+		px = state.w / 2;
+
+	if (px + state.w / 2 - 1 > LEVEL_WIDTH * 16)
+		px = LEVEL_WIDTH * 16 - state.w / 2;
+
+	// prevent clipping into a tile
+	while (player_is_colliding())
+		py--;
 }
 
 void game_init() {
@@ -114,14 +153,8 @@ void game_update(const Input *input) {
 	draw_text("vivian.5       world 1-1", 2, 2);
 
 	// temp size-changing
-	if (input->action_b_justchanged && input->action_b) {
-		curr_state++;
-		if (curr_state == sizeof(states) / sizeof(CharacterState))
-			curr_state = 0;
-
-		while (player_is_colliding())
-			py--;
-	}
+	if (input->action_b_justchanged && input->action_b)
+		increase_state();
 
 	CharacterState state = states[curr_state];
 
@@ -214,14 +247,14 @@ void game_update(const Input *input) {
 			anim_y = 2 * state.h;
 		}
 		
-	} else if (!input->left && !input->right && pdx < state.run_acceleration && pdx > -state.run_acceleration) {
+	} else if (pdx == 0 || (!input->left && !input->right && pdx < state.run_acceleration && pdx > -state.run_acceleration)) {
 
 		// TODO idle animation
 		anim_x = 0;
 		anim_y = 0;
 		animt = 0;
 
-	} else if (facing_left == pdx > 0) { // turning animation occurs when, say, facing left but moving right
+	} else if (pdx > -0.01 && pdx < 0.01 && facing_left == pdx > 0) { // turning animation occurs when, say, facing left but moving right
 	
 		anim_x = state.w;
 		anim_y = 3 * state.h;
