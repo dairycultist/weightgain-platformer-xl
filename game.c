@@ -3,7 +3,8 @@
 typedef struct {
 
 	int ss_off; // vertical offset within sprite sheet
-	int w, h;
+	int sprite_w, sprite_h;
+	// int col_w, col_h;
 
 	float run_acceleration;
 	float run_deceleration; // higher for quick turning
@@ -15,7 +16,7 @@ typedef struct {
 const static CharacterState states[] = {
 	{ 0, 32, 32, 0.1, 0.3, 3.0, -5.0 },
 	{ 128, 32, 32, 0.05, 0.15, 2.5, -5.0 },
-	{ 256, 48, 48, 0.035, 0.1, 2.0, -3.5 },
+	{ 256, 48, 48, 0.035, 0.1, 2.0, -4.5 },
 	{ 448, 64, 48, 0.02, 0.05, 1.0, -2.5 },
 	{ 640, 96, 48, 0.01, 0.05, 0.5, -1.0 }
 };
@@ -94,8 +95,8 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -135,17 +136,30 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 };
 
 static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *end_y) {
 
-	*start_x = (p_x - curr_state.w / 2) / 16;
-	*start_y = (p_y - curr_state.h - 72) / 16;
+	*start_x = (p_x - curr_state.sprite_w / 2) / 16;
+	*start_y = (p_y - curr_state.sprite_h - 72) / 16;
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = (p_x - 1 + curr_state.w / 2) / 16;
+	*end_x = (p_x - 1 + curr_state.sprite_w / 2) / 16;
 	*end_y = (p_y - 1 - 72) / 16;
 
 	if (*end_y > LEVEL_HEIGHT - 1)
@@ -155,11 +169,11 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 static int player_is_colliding() {
 
 	// colliding with left side of screen?
-	if (p_x - curr_state.w / 2 < cam_off)
+	if (p_x - curr_state.sprite_w / 2 < cam_off)
 		return 1;
 
 	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.w / 2 - 1 > LEVEL_WIDTH * 16)
+	if (p_x + curr_state.sprite_w / 2 - 1 > LEVEL_WIDTH * 16)
 		return 1;
 
 	// colliding with the level?
@@ -189,12 +203,12 @@ static void increase_state() {
 	curr_state = states[curr_state_i];
 
 	// prevent clipping into left side of screen
-	if (p_x - curr_state.w / 2 < cam_off)
-		p_x = curr_state.w / 2 + cam_off;
+	if (p_x - curr_state.sprite_w / 2 < cam_off)
+		p_x = curr_state.sprite_w / 2 + cam_off;
 
 	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.w / 2 - 1 > LEVEL_WIDTH * 16)
-		p_x = LEVEL_WIDTH * 16 - curr_state.w / 2;
+	if (p_x + curr_state.sprite_w / 2 - 1 > LEVEL_WIDTH * 16)
+		p_x = LEVEL_WIDTH * 16 - curr_state.sprite_w / 2;
 
 	// prevent clipping into a tile
 	while (player_is_colliding())
@@ -278,6 +292,7 @@ void game_update(const Input *input) {
 
 	// jump
 	if (grounded && input->action_a_justchanged && input->action_a) {
+
 		p_dy = curr_state.jump_speed + (p_dx < 0 ? p_dx : -p_dx) / curr_state.max_run_speed * 0.5;
 		grounded = 0;
 	}
@@ -304,7 +319,7 @@ void game_update(const Input *input) {
 		} while (player_is_colliding());
 
 		// breakable tile breaking
-		if (curr_state_i >= 3) {
+		if (curr_state_i >= 2) {
 
 			int significant_x = p_dx > 0 ? end_x : start_x;
 			int broke_something = 0;
@@ -343,18 +358,16 @@ void game_update(const Input *input) {
 			p_y -= p_dy * 0.1;
 		} while (player_is_colliding());
 
-		// breakable tile breaking (do we want to check if velocity is over
-		// a certain amount? to allow for walking onto without breaking)
-		if (p_dy < 0 || curr_state_i >= 2) {
+		// breakable tile breaking (can be modified to allow for breaking downward)
+		if (p_dy < 0) {
 
-			int significant_y = p_dy > 0 ? end_y : start_y;
 			int broke_something = 0;
 
 			for (int x = start_x; x <= end_x; x++) {
 
-				if (level[significant_y + x * LEVEL_HEIGHT] == 2) {
+				if (level[start_y + x * LEVEL_HEIGHT] == 2) {
 
-					level[significant_y + x * LEVEL_HEIGHT] = 0;
+					level[start_y + x * LEVEL_HEIGHT] = 0;
 					broke_something = 1;
 				}
 			}
@@ -382,19 +395,19 @@ void game_update(const Input *input) {
 	if (input->down) {
 
 		anim_x = 0;
-		anim_y = 3 * curr_state.h;
+		anim_y = 3 * curr_state.sprite_h;
 
 	} else if (!grounded) {
 
 		if (p_dy > -curr_state.jump_speed / 2.7) {
-			anim_x = 2 * curr_state.w;
-			anim_y = 2 * curr_state.h;
+			anim_x = 2 * curr_state.sprite_w;
+			anim_y = 2 * curr_state.sprite_h;
 		} else if (p_dy < curr_state.jump_speed / 2.7) {
 			anim_x = 0;
-			anim_y = 2 * curr_state.h;
+			anim_y = 2 * curr_state.sprite_h;
 		} else {
-			anim_x = curr_state.w;
-			anim_y = 2 * curr_state.h;
+			anim_x = curr_state.sprite_w;
+			anim_y = 2 * curr_state.sprite_h;
 		}
 		
 	} else if (p_dx == 0 || (!input->left && !input->right && p_dx < curr_state.run_acceleration && p_dx > -curr_state.run_acceleration)) {
@@ -406,17 +419,17 @@ void game_update(const Input *input) {
 
 	} else if (facing_left == p_dx > 0) { // turning animation occurs when facing left but moving right (or opposite)
 	
-		anim_x = curr_state.w;
-		anim_y = 3 * curr_state.h;
+		anim_x = curr_state.sprite_w;
+		anim_y = 3 * curr_state.sprite_h;
 		p_animt = 0;
 	
 	} else {
 
-		anim_x = (int) p_animt % 4 * curr_state.w;
-		anim_y = curr_state.h;
+		anim_x = (int) p_animt % 4 * curr_state.sprite_w;
+		anim_y = curr_state.sprite_h;
 	}
 
-	draw_character(curr_state.w, curr_state.h, anim_x, anim_y + curr_state.ss_off, (int) p_x - curr_state.w / 2 - cam_off, (int) p_y - curr_state.h, facing_left);
+	draw_character(curr_state.sprite_w, curr_state.sprite_h, anim_x, anim_y + curr_state.ss_off, (int) p_x - curr_state.sprite_w / 2 - cam_off, (int) p_y - curr_state.sprite_h, facing_left);
 
 	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
 
