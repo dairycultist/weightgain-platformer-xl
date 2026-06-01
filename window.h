@@ -15,6 +15,7 @@ typedef struct {
 	int right, 		right_justchanged;
 	int action_a, 	action_a_justchanged;
 	int action_b, 	action_b_justchanged;
+	int pause,      pause_justchanged;
 
 } Input;
 

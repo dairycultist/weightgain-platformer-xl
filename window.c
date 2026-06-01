@@ -187,6 +187,7 @@ int main(void) {
 		input.right_justchanged    = 0;
 		input.action_a_justchanged = 0;
 		input.action_b_justchanged = 0;
+		input.pause_justchanged    = 0;
 		
 		while (SDL_PollEvent(&event)) {
 
@@ -234,7 +235,8 @@ int main(void) {
 						input.action_b_justchanged = 1;
 						break;
 					case SDL_SCANCODE_ESCAPE:
-						goto destroy;
+						input.pause = event.key.state == SDL_PRESSED;
+						input.pause_justchanged = 1;
 						break;
 					case SDL_SCANCODE_MINUS: // decrement curr_character
 					case SDL_SCANCODE_LEFTBRACKET:

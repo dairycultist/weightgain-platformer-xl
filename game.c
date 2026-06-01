@@ -3,10 +3,20 @@
 // three enemies: goomba-like (walks off platforms), red-koopa-like (doesn't),
 // and fire-sprite-from-smb3-like (jumps towards player, imma make it a frog)
 
+// gamestate data (playing level, level intro screen, paused, etc)
+//
+#define PLAYING_LEVEL_ST 0
+#define EXITING_LEVEL_ST 1
+#define STARTING_LEVEL_ST 2
+#define PAUSED_FROM_LEVEL_ST 3
+
+static int gamestate;
+static int gamestate_animt;
+
 // entity data (enemies, particles, etc)
 //
-#define NULL_T 0
-#define BROKEN_T 1
+#define NULL_ET 0
+#define BROKEN_ET 1
 
 typedef struct {
 
@@ -187,7 +197,7 @@ static void add_entity(Entity e) { // might fail but doesn't matter
 
 	for (int i = 0; i < sizeof(entities) / sizeof(Entity); i++) {
 
-		if (entities[i].type == NULL_T) {
+		if (entities[i].type == NULL_ET) {
 
 			entities[i] = e;
 			return;
@@ -241,7 +251,8 @@ static int player_is_colliding() {
 
 static void restart_level() { // e.g. on first start; on death
 
-	// TODO show level intro screen (or just set an animation flag to do so)
+	// TODO show level intro screen
+	// gamestate = STARTING_LEVEL_ST;
 
 	// TODO (re)load level
 
@@ -289,30 +300,7 @@ static void increase_state() {
 		p_y--;
 }
 
-// game logic functions
-//
-void game_init() {
-
-	restart_level();
-}
-
-void game_update(const Input *input) {
-
-	// falling into pit
-	if (p_y - curr_state.col_h - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
-
-		restart_level();
-	}
-
-	// update camera offset
-	if (p_x + 127.5 > LEVEL_WIDTH * 16) {
-		
-		cam_off = LEVEL_WIDTH * 16 - WIDTH;
-
-	} else if (cam_off < p_x - 127.5) {
-
-		cam_off = p_x - 127.5;
-	}
+static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet offsets
 
 	// draw level
 	for (int i = 0; i < sizeof(level) / sizeof(int); i++) {
@@ -350,19 +338,56 @@ void game_update(const Input *input) {
 
 		switch (entities[i].type) {
 
-			case BROKEN_T:
+			case NULL_ET:
+			default:
+				break;
+
+			case BROKEN_ET:
 				entities[i].dy += 0.2; // gravity
 				entities[i].x += entities[i].dx;
 				entities[i].y += entities[i].dy;
 				draw_level_flip(17, entities[i].x - cam_off, entities[i].y + LEVEL_Y_OFFSET, ((level_animt + i * 4) / 12) % 2);
 
 				if (entities[i].y > LEVEL_HEIGHT * 16)
-					entities[i].type = NULL_T;
-				break;
-
-			default:
+					entities[i].type = NULL_ET;
 				break;
 		}
+	}
+
+	// character
+	draw_character(curr_state.sprite_w, curr_state.sprite_h, anim_x, anim_y + curr_state.ss_off, (int) p_x - curr_state.sprite_w / 2 - cam_off, (int) p_y - curr_state.sprite_h, facing_left);
+
+	// HUD
+	draw_level(2, 2, 2);
+
+	char candy_text[] = ".\0"; // TODO "world 1-1"
+	candy_text[1] = candy_count + '0';
+	draw_text(candy_text, 17, 8);
+}
+
+// game logic functions
+//
+void game_init() {
+
+	restart_level();
+}
+
+static void update_playing_level(const Input *input) {
+
+	// falling into pit
+	if (p_y - curr_state.col_h - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
+
+		restart_level();
+	}
+
+	// update camera offset
+	if (p_x + 127.5 > LEVEL_WIDTH * 16) {
+		
+		cam_off = LEVEL_WIDTH * 16 - WIDTH;
+
+	} else if (cam_off < p_x - 127.5) {
+
+		cam_off = p_x - 127.5;
 	}
 
 	// running
@@ -440,10 +465,10 @@ void game_update(const Input *input) {
 					broke_something = 1;
 
 					// broken tile particles
-					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16, -1.0, -3.0 });
-					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16,  1.0, -3.0 });
-					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16, -1.0,  0.0 });
-					add_entity((Entity) { BROKEN_T, significant_x * 16, y * 16,  1.0,  0.0 });
+					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16, -1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16,  1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16, -1.0,  0.0 });
+					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16,  1.0,  0.0 });
 				}
 			}
 
@@ -485,10 +510,10 @@ void game_update(const Input *input) {
 					broke_something = 1;
 
 					// broken tile particles
-					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16, -1.0, -3.0 });
-					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16,  1.0, -3.0 });
-					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16, -1.0,  0.0 });
-					add_entity((Entity) { BROKEN_T, x * 16, start_y * 16,  1.0,  0.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0,  0.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0,  0.0 });
 				}
 			}
 
@@ -505,6 +530,30 @@ void game_update(const Input *input) {
 		skip_vertical:
 
 	}
+
+	// collect candy
+	int start_x, start_y, end_x, end_y;
+	get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+	for (int x = start_x; x <= end_x; x++) {
+
+		for (int y = start_y; y <= end_y; y++) {
+
+			if (level[y + x * LEVEL_HEIGHT] == 3) {
+
+				candy_count++;
+				level[y + x * LEVEL_HEIGHT] = 0;
+
+				if (candy_count == 10) {
+
+					candy_count = 0;
+					increase_state();
+				}
+			}
+		}
+	}
+
+	// draw
 
 	// determine animation
 	int anim_x, anim_y;
@@ -546,40 +595,38 @@ void game_update(const Input *input) {
 		anim_y = curr_state.sprite_h;
 	}
 
-	draw_character(curr_state.sprite_w, curr_state.sprite_h, anim_x, anim_y + curr_state.ss_off, (int) p_x - curr_state.sprite_w / 2 - cam_off, (int) p_y - curr_state.sprite_h, facing_left);
+	draw_level_contents(anim_x, anim_y);
 
 	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
 
 	level_animt++;
 	t_since_jump++;
 	t_since_grounded++;
+}
 
-	// collect candy
-	int start_x, start_y, end_x, end_y;
-	get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+static void update_paused_from_level(const Input *input) {
 
-	for (int x = start_x; x <= end_x; x++) {
+	draw_level_contents(0, 0);
 
-		for (int y = start_y; y <= end_y; y++) {
+	draw_text("paused", 111, 8);
+}
 
-			if (level[y + x * LEVEL_HEIGHT] == 3) {
+void game_update(const Input *input) {
 
-				candy_count++;
-				level[y + x * LEVEL_HEIGHT] = 0;
+	// should move this to inside the static update functions, but idc rn
+	if (input->pause && input->pause_justchanged) {
 
-				if (candy_count == 10) {
-
-					candy_count = 0;
-					increase_state();
-				}
-			}
-		}
+		gamestate = gamestate == PAUSED_FROM_LEVEL_ST ? PLAYING_LEVEL_ST : PAUSED_FROM_LEVEL_ST;
 	}
 
-	// HUD
-	draw_level(2, 2, 2);
+	switch (gamestate) {
 
-	char candy_text[] = ".\0"; // TODO "world 1-1"
-	candy_text[1] = candy_count + '0';
-	draw_text(candy_text, 17, 8);
+		case PLAYING_LEVEL_ST:
+			update_playing_level(input);
+			break;
+		
+		case PAUSED_FROM_LEVEL_ST:
+			update_paused_from_level(input);
+			break;
+	}
 }
