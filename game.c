@@ -27,6 +27,10 @@ static int curr_state_i = 0;
 static float p_x, p_y;
 static float p_dx, p_dy;
 
+#define JUMP_LEEWAY 6
+static int t_since_jump = 30; // for input-caching
+static int t_since_grounded = 0; // for coyote-time
+
 static int candy_count;
 
 static int cam_off;
@@ -34,7 +38,6 @@ static int cam_off;
 static float p_animt;
 
 static int facing_left;
-static int grounded;
 
 #define LEVEL_HEIGHT 13
 #define LEVEL_WIDTH (sizeof(level) / sizeof(int) / LEVEL_HEIGHT)
@@ -175,6 +178,8 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 
 static int player_is_colliding() {
 
+	// TODO there's a collision bug at the top of the level where you can't pass tiles...
+
 	// colliding with left side of screen?
 	if ((int) p_x - curr_state.col_w / 2 < cam_off)
 		return 1;
@@ -284,7 +289,7 @@ void game_update(const Input *input) {
 
 		p_dx *= 0.95;
 
-	} else if (!grounded || !input->down) {
+	} else if (t_since_grounded != 0 || !input->down) {
 
 		if (input->left) {
 			facing_left = 1;
@@ -306,10 +311,17 @@ void game_update(const Input *input) {
 	}
 
 	// jump
-	if (grounded && input->action_a_justchanged && input->action_a) {
+	if (input->action_a_justchanged && input->action_a)
+		t_since_jump = 0;
+
+	if (t_since_grounded < JUMP_LEEWAY && t_since_jump < JUMP_LEEWAY) {
 
 		p_dy = curr_state.jump_speed + (p_dx < 0 ? p_dx : -p_dx) / curr_state.max_run_speed * 0.5;
-		grounded = 0;
+		t_since_grounded = JUMP_LEEWAY;
+
+		if (!input->action_a) { // the jump was early-released before the jump even started!
+			p_dy /= 2;
+		}
 	}
 
 	// early release jump
@@ -394,14 +406,11 @@ void game_update(const Input *input) {
 			}
 		}
 
-		grounded = 1;
+		t_since_grounded = 0;
 		p_dy = 1;
 
 		skip_vertical:
 
-	} else {
-
-		grounded = 0;
 	}
 
 	// determine animation
@@ -412,7 +421,7 @@ void game_update(const Input *input) {
 		anim_x = 0;
 		anim_y = 3 * curr_state.sprite_h;
 
-	} else if (!grounded) {
+	} else if (t_since_grounded != 0) {
 
 		if (p_dy > -curr_state.jump_speed / 2.7) {
 			anim_x = 2 * curr_state.sprite_w;
@@ -449,6 +458,8 @@ void game_update(const Input *input) {
 	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
 
 	level_animt++;
+	t_since_jump++;
+	t_since_grounded++;
 
 	// collect candy
 	int start_x, start_y, end_x, end_y;
