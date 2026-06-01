@@ -108,14 +108,14 @@ int main(void) {
 		return 1;
 	}
 
-	ss_level = IMG_LoadTexture(renderer, "level.png");
+	ss_level = IMG_LoadTexture(renderer, "./misc/level.png");
 
 	if (!ss_level) {
 		fprintf(stderr, "Could not read level.png\n");
 		return 1;
 	}
 
-	ss_font = IMG_LoadTexture(renderer, "font.png");
+	ss_font = IMG_LoadTexture(renderer, "./misc/font.png");
 
 	if (!ss_font) {
 		fprintf(stderr, "Could not read font.png\n");

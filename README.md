@@ -1,8 +1,7 @@
-simple standalone weightgain platformer with preset levels (like, 4 or something)
+A simple standalone weight-gain platformer with retexturing support. The weight-gain mechanic plays the role of the
+traditional SMB-like powerup system.
 
-weightgain mechanic: bar at the top shows how many candies you have to eat before going up a size, getting hit reduces you by a size
-
-Vivian character originally made by (and stolen from) DoubleCap Productions ([source](https://someoneuknow9097.itch.io/smb1r-weight-gain-mod))
+Vivian character originally made by (and stolen from) DoubleCap Productions ([source](https://someoneuknow9097.itch.io/smb1r-weight-gain-mod)).
 
 ## Installation
 
@@ -33,6 +32,15 @@ make run
 
 ## Modding
 
-Currently you can only mod character sprites (might add level sprites and level layout modding as well not a priority tho)
+Currently you can mod character sprites, level sprites, and the font. (custom levels are planned but not a priority;
+for now enjoy my handful of preset levels :3).
 
-Put your sprites in `./characters/` as a `.png`.
+The resolution of individual sprites *must* match up and have the same layout. You should also keep the resolution of
+the images the same.
+
+Put your character sprites in `./characters/` as a `.png` (I recommend copying an existing one as a template). You can
+switch between characters using the -/+ keys.
+
+To mod level sprites, edit the `./misc/level.png` file (currently no switching system).
+
+To mod the font, edit the `./misc/font.png` file (currently no switching system).

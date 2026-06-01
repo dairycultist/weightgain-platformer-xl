@@ -1,8 +1,5 @@
 #include "window.h"
 
-// three enemies: goomba-like (walks off platforms), red-koopa-like (doesn't),
-// and fire-sprite-from-smb3-like (jumps towards player, imma make it a frog)
-
 // gamestate data (playing level, level intro screen, paused, etc)
 //
 #define PLAYING_LEVEL_ST 0
@@ -15,6 +12,10 @@ static int gamestate_animt;
 
 // entity data (enemies, particles, etc)
 //
+
+// TODO three enemie ideas: goomba-like (walks off platforms), red-koopa-like (doesn't),
+// TODO and fire-sprite-from-smb3-like (jumps towards player)
+
 #define NULL_ET 0
 #define BROKEN_ET 1
 
