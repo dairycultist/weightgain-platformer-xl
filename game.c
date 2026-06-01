@@ -78,8 +78,22 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+	0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 };
 
 static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *end_y) {
@@ -240,11 +254,40 @@ void game_update(const Input *input) {
 
 	if (player_is_colliding()) {
 
+		// breakable tile breaking
+		if (curr_state_i >= 3) {
+
+			int start_x, start_y, end_x, end_y;
+			get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+			int significant_x = p_dx > 0 ? end_x : start_x;
+			int broke_something = 0;
+
+			for (int y = start_y; y <= end_y; y++) {
+
+				if (level[y + significant_x * LEVEL_HEIGHT] == 2) {
+
+					level[y + significant_x * LEVEL_HEIGHT] = 0;
+					broke_something = 1;
+				}
+			}
+
+			if (broke_something) {
+
+				p_dx = p_dx < 0 ? 1.0 : -1.0;
+				p_dy = -1.5;
+				goto skip_horizontal_col;
+			}
+		}
+
+		// actually do the collision repositioning
 		do {
 			p_x -= p_dx * 0.1;
 		} while (player_is_colliding());
 
 		p_dx = 0;
+
+		skip_horizontal_col:
 	}
 
 	p_y += p_dy;
