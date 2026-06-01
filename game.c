@@ -71,24 +71,30 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -254,11 +260,16 @@ void game_update(const Input *input) {
 
 	if (player_is_colliding()) {
 
+		int start_x, start_y, end_x, end_y;
+		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+		// legalize position
+		do {
+			p_x -= p_dx * 0.1;
+		} while (player_is_colliding());
+
 		// breakable tile breaking
 		if (curr_state_i >= 3) {
-
-			int start_x, start_y, end_x, end_y;
-			get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
 
 			int significant_x = p_dx > 0 ? end_x : start_x;
 			int broke_something = 0;
@@ -276,29 +287,30 @@ void game_update(const Input *input) {
 
 				p_dx = p_dx < 0 ? 1.0 : -1.0;
 				p_dy = -1.5;
-				goto skip_horizontal_col;
+				goto skip_horizontal;
 			}
 		}
 
-		// actually do the collision repositioning
-		do {
-			p_x -= p_dx * 0.1;
-		} while (player_is_colliding());
-
 		p_dx = 0;
 
-		skip_horizontal_col:
+		skip_horizontal:
 	}
 
 	p_y += p_dy;
 
 	if (player_is_colliding()) {
 
-		// breakable tile breaking
-		if (p_dy < 0 || curr_state_i >= 2) {
+		int start_x, start_y, end_x, end_y;
+		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
 
-			int start_x, start_y, end_x, end_y;
-			get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+		// legalize position
+		do {
+			p_y -= p_dy * 0.1;
+		} while (player_is_colliding());
+
+		// breakable tile breaking (do we want to check if velocity is over
+		// a certain amount? to allow for walking onto without breaking)
+		if (p_dy < 0 || curr_state_i >= 2) {
 
 			int significant_y = p_dy > 0 ? end_y : start_y;
 			int broke_something = 0;
@@ -315,19 +327,14 @@ void game_update(const Input *input) {
 			if (broke_something) {
 
 				p_dy = p_dy < 0 ? 1.0 : -1.5;
-				goto skip_vertical_col;
+				goto skip_vertical;
 			}
 		}
-
-		// actually do the collision repositioning
-		do {
-			p_y -= p_dy * 0.1;
-		} while (player_is_colliding());
 
 		grounded = 1;
 		p_dy = 1;
 
-		skip_vertical_col:
+		skip_vertical:
 
 	} else {
 
