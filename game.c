@@ -84,37 +84,20 @@ static int player_is_colliding() {
 	if (start_y < 0)
 		start_y = 0;
 
-	for (int x = start_x; x < start_x + (state.w / 16); x++) {
+	int end_x = (px - 1 + state.w / 2) / 16;
+	int end_y = (py - 1 - 72) / 16;
 
-		for (int y = start_y; y < start_y + (state.h / 16); y++) {
+	if (end_y > LEVEL_HEIGHT - 1)
+		end_y = LEVEL_HEIGHT - 1;
+
+	for (int x = start_x; x <= end_x; x++) {
+
+		for (int y = start_y; y <= end_y; y++) {
 
 			if (level[y + x * LEVEL_HEIGHT])
 				return 1;
 		}
 	}
-
-	// far positive edges is unique because math
-	int farstart_x = (px - 1 - state.w / 2) / 16;
-	int farstart_y = (py - 1 - state.h - 72) / 16;
-
-	if (farstart_y < 0)
-		farstart_y = 0;
-
-	for (int x = start_x; x < start_x + (state.w / 16); x++) {
-
-		if (level[farstart_y + (state.h / 16) + x * LEVEL_HEIGHT])
-			return 1;
-	}
-
-	for (int y = start_y; y < start_y + (state.h / 16); y++) {
-
-		if (level[y + (farstart_x + (state.w / 16)) * LEVEL_HEIGHT])
-			return 1;
-	}
-
-	// and the far positive corner
-	if (level[farstart_y + (state.h / 16) + (farstart_x + (state.w / 16)) * LEVEL_HEIGHT])
-		return 1;
 
 	return 0;
 }
@@ -144,7 +127,7 @@ static void increase_state() {
 void game_init() {
 
 	px = 48.0;
-	py = 248.0;
+	py = 200.0;
 	
 	set_background(80, 180, 255);
 }
