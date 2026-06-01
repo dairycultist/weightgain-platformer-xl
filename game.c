@@ -4,7 +4,7 @@ typedef struct {
 
 	int ss_off; // vertical offset within sprite sheet
 	int sprite_w, sprite_h;
-	// int col_w, col_h;
+	int col_w, col_h;
 
 	float run_acceleration;
 	float run_deceleration; // higher for quick turning
@@ -14,11 +14,11 @@ typedef struct {
 } CharacterState;
 
 const static CharacterState states[] = {
-	{ 0, 32, 32, 0.1, 0.3, 3.0, -5.0 },
-	{ 128, 32, 32, 0.05, 0.15, 2.5, -5.0 },
-	{ 256, 48, 48, 0.035, 0.1, 2.0, -4.5 },
-	{ 448, 64, 48, 0.02, 0.05, 1.0, -2.5 },
-	{ 640, 96, 48, 0.01, 0.05, 0.5, -1.0 }
+	{ 0, 32, 32, 24, 32, 0.1, 0.3, 3.0, -5.0 },
+	{ 128, 32, 32, 24, 32, 0.05, 0.15, 2.5, -5.0 },
+	{ 256, 48, 48, 40, 32, 0.035, 0.1, 2.0, -4.5 },
+	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -2.5 },
+	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -1.0 }
 };
 
 static CharacterState curr_state = states[0];
@@ -145,6 +145,13 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -153,13 +160,13 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 
 static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *end_y) {
 
-	*start_x = (p_x - curr_state.sprite_w / 2) / 16;
-	*start_y = (p_y - curr_state.sprite_h - 72) / 16;
+	*start_x = (p_x - curr_state.col_w / 2) / 16;
+	*start_y = (p_y - curr_state.col_h - 72) / 16;
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = (p_x - 1 + curr_state.sprite_w / 2) / 16;
+	*end_x = (p_x - 1 + curr_state.col_w / 2) / 16;
 	*end_y = (p_y - 1 - 72) / 16;
 
 	if (*end_y > LEVEL_HEIGHT - 1)
@@ -169,11 +176,11 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 static int player_is_colliding() {
 
 	// colliding with left side of screen?
-	if (p_x - curr_state.sprite_w / 2 < cam_off)
+	if (p_x - curr_state.col_w / 2 < cam_off)
 		return 1;
 
 	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.sprite_w / 2 - 1 > LEVEL_WIDTH * 16)
+	if (p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
 		return 1;
 
 	// colliding with the level?
@@ -203,12 +210,12 @@ static void increase_state() {
 	curr_state = states[curr_state_i];
 
 	// prevent clipping into left side of screen
-	if (p_x - curr_state.sprite_w / 2 < cam_off)
-		p_x = curr_state.sprite_w / 2 + cam_off;
+	if (p_x - curr_state.col_w / 2 < cam_off)
+		p_x = curr_state.col_w / 2 + cam_off;
 
 	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.sprite_w / 2 - 1 > LEVEL_WIDTH * 16)
-		p_x = LEVEL_WIDTH * 16 - curr_state.sprite_w / 2;
+	if (p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
+		p_x = LEVEL_WIDTH * 16 - curr_state.col_w / 2;
 
 	// prevent clipping into a tile
 	while (player_is_colliding())
