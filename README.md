@@ -5,14 +5,7 @@ Vivian character originally made by (and stolen from) DoubleCap Productions ([so
 
 ## Installation
 
-1. Install dependencies. Windows isn't supported yet because of `<dirent.h>` for directory traversal (windows uses `<windows.h>`).
-
-On **Mac**:
-
-```
-brew install sdl2
-brew install sdl2_image
-```
+1. Install dependencies. Windows isn't supported yet because I don't have a Windows machine to test on (and because Windows traverses directories differently than Mac/Linux which I'd have to implement).
 
 On **Ubuntu/Debian**:
 
@@ -20,6 +13,13 @@ On **Ubuntu/Debian**:
 sudo apt update
 sudo apt install libsdl2-dev
 sudo apt install libsdl2-image-dev
+```
+
+On **Mac** (I haven't actually tested compiling it on Mac, the gcc flags might be wrong):
+
+```
+brew install sdl2
+brew install sdl2_image
 ```
 
 2. Clone, build, and run the project.

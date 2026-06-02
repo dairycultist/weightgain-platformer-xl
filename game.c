@@ -229,10 +229,6 @@ static int player_is_colliding() {
 	if ((int) p_x - curr_state.col_w / 2 < cam_off)
 		return 1;
 
-	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if ((int) p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
-		return 1;
-
 	// colliding with the level?
 	int start_x, start_y, end_x, end_y;
 
@@ -252,8 +248,8 @@ static int player_is_colliding() {
 
 static void restart_level() { // e.g. on first start; on death
 
-	// TODO show level intro screen
-	// gamestate = STARTING_LEVEL_ST;
+	// show level intro screen
+	gamestate = STARTING_LEVEL_ST;
 
 	// TODO (re)load level
 
@@ -292,10 +288,6 @@ static void increase_state() {
 	if (p_x - curr_state.col_w / 2 < cam_off)
 		p_x = curr_state.col_w / 2 + cam_off;
 
-	// TEMP until we have proper level-end, gotta stop the player from clipping into the right edge of the level
-	if (p_x + curr_state.col_w / 2 - 1 > LEVEL_WIDTH * 16)
-		p_x = LEVEL_WIDTH * 16 - curr_state.col_w / 2;
-
 	// prevent clipping into a tile
 	while (player_is_colliding())
 		p_y--;
@@ -304,6 +296,7 @@ static void increase_state() {
 static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet offsets
 
 	// draw level
+	// TODO don't draw parts that are obviously off-screen
 	for (int i = 0; i < sizeof(level) / sizeof(int); i++) {
 
 		int sprite;
@@ -417,10 +410,11 @@ static void update_playing_level(const Input *input) {
 		p_dx *= 0.95;
 	}
 
-	// jump
+	// cache jump
 	if (input->action_a_justchanged && input->action_a)
 		t_since_jump = 0;
 
+	// jump
 	if (t_since_grounded < JUMP_LEEWAY && t_since_jump < JUMP_LEEWAY) {
 
 		p_dy = curr_state.jump_speed + (p_dx < 0 ? p_dx : -p_dx) / curr_state.max_run_speed * 0.5;
@@ -429,6 +423,8 @@ static void update_playing_level(const Input *input) {
 		if (!input->action_a) { // the jump was early-released before the jump even started!
 			p_dy /= 2;
 		}
+
+		t_since_jump = JUMP_LEEWAY; // if we don't do this, then we can actually jump twice for one jump press
 	}
 
 	// early release jump
@@ -603,6 +599,13 @@ static void update_playing_level(const Input *input) {
 	level_animt++;
 	t_since_jump++;
 	t_since_grounded++;
+
+	// detect if we've reached the end of the level (a few tiles away from right edge)
+	if ((int) p_x + 64 > LEVEL_WIDTH * 16) {
+		
+		facing_left = 0;
+		gamestate = EXITING_LEVEL_ST;
+	}
 }
 
 static void update_paused_from_level(const Input *input) {
@@ -610,6 +613,18 @@ static void update_paused_from_level(const Input *input) {
 	draw_level_contents(0, 0);
 
 	draw_text("paused", 111, 8);
+}
+
+static void update_ending_level() {
+
+	p_x += curr_state.max_run_speed;
+
+	draw_level_contents((int) p_animt % 4 * curr_state.sprite_w, curr_state.sprite_h);
+
+	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
+
+	if (p_x - 64 > LEVEL_WIDTH * 16)
+		increase_level();
 }
 
 void game_update(const Input *input) {
@@ -624,6 +639,14 @@ void game_update(const Input *input) {
 
 		case PLAYING_LEVEL_ST:
 			update_playing_level(input);
+			break;
+
+		case EXITING_LEVEL_ST:
+			update_ending_level();
+			break;
+		
+		case STARTING_LEVEL_ST:
+			gamestate = PLAYING_LEVEL_ST;
 			break;
 		
 		case PAUSED_FROM_LEVEL_ST:
