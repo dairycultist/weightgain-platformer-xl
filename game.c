@@ -13,8 +13,7 @@ static int gamestate_animt;
 // entity data (enemies, particles, etc)
 //
 
-// TODO three enemie ideas: goomba-like (walks off platforms), red-koopa-like (doesn't),
-// TODO and fire-sprite-from-smb3-like (jumps towards player)
+// TODO implement a "galoomba" (enemy that you can pick up after jumping on it)
 
 #define NULL_ET 0
 #define BROKEN_ET 1
@@ -31,28 +30,17 @@ static Entity entities[32] = {}; // first come, first serve
 
 // player data
 //
-typedef struct {
+#define PLAYER_COLLIDER_W 24
+#define PLAYER_COLLIDER_H 32
+#define PLAYER_SPRITE_W 32
+#define PLAYER_SPRITE_H 32
 
-	int ss_off; // vertical offset within sprite sheet
-	int sprite_w, sprite_h;
-	int col_w, col_h;
+#define PLAYER_RUN_ACCEL 0.1
+#define PLAYER_RUN_DECEL 0.3
+#define PLAYER_MAX_SPEED 3.0
+#define PLAYER_JUMP_SPEED -5.0
 
-	float run_acceleration;
-	float run_deceleration; // higher for quick turning
-	float max_run_speed;
-	float jump_speed;
-
-} CharacterState;
-
-const static CharacterState states[] = {
-	{ 0, 32, 32, 24, 32, 0.1, 0.3, 3.0, -5.0 },
-	{ 128, 32, 32, 24, 32, 0.05, 0.15, 2.5, -5.0 },
-	{ 256, 48, 48, 40, 32, 0.035, 0.1, 2.0, -4.7 },
-	{ 448, 64, 48, 64, 40, 0.02, 0.05, 1.0, -3.5 },
-	{ 640, 96, 48, 96, 40, 0.01, 0.05, 0.5, -2.5 }
-};
-static CharacterState curr_state;
-static int curr_state_i;
+static int player_sprite_y_offset = 0;
 
 static float p_x, p_y;
 static float p_dx, p_dy;
@@ -210,13 +198,13 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 
 	#define FLOOR(v) ((v) >= 0 || (v) == (int) (v) ? ((int) (v)) : ((int) (v) - 1))
 
-	*start_x = FLOOR((p_x - curr_state.col_w / 2) / 16.0);
-	*start_y = FLOOR((p_y - curr_state.col_h - LEVEL_Y_OFFSET) / 16.0);
+	*start_x = FLOOR((p_x - PLAYER_COLLIDER_W / 2) / 16.0);
+	*start_y = FLOOR((p_y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = FLOOR((p_x - 1 + curr_state.col_w / 2) / 16.0);
+	*end_x = FLOOR((p_x - 1 + PLAYER_COLLIDER_W / 2) / 16.0);
 	*end_y = FLOOR((p_y - 1 - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*end_y > LEVEL_HEIGHT - 1)
@@ -226,7 +214,7 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 static int player_is_colliding() {
 
 	// colliding with left side of screen?
-	if ((int) p_x - curr_state.col_w / 2 < cam_off)
+	if ((int) p_x - PLAYER_COLLIDER_W / 2 < cam_off)
 		return 1;
 
 	// colliding with the level?
@@ -253,9 +241,6 @@ static void restart_level() { // e.g. on first start; on death
 
 	// TODO (re)load level
 
-	curr_state_i = 0;
-	curr_state = states[0];
-
 	p_x = 48.0;
 	p_y = 248.0;
 	p_dx = 0.0;
@@ -273,24 +258,6 @@ static void increase_level() { // e.g. on stage win
 	// TODO increase level!
 
 	restart_level();
-}
-
-static void increase_state() {
-
-	if (curr_state_i == sizeof(states) / sizeof(CharacterState) - 1)
-		return;
-
-	curr_state_i++;
-
-	curr_state = states[curr_state_i];
-
-	// prevent clipping into left side of screen
-	if (p_x - curr_state.col_w / 2 < cam_off)
-		p_x = curr_state.col_w / 2 + cam_off;
-
-	// prevent clipping into a tile
-	while (player_is_colliding())
-		p_y--;
 }
 
 static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet offsets
@@ -349,13 +316,14 @@ static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet
 	}
 
 	// character
-	draw_character(curr_state.sprite_w, curr_state.sprite_h, anim_x, anim_y + curr_state.ss_off, (int) p_x - curr_state.sprite_w / 2 - cam_off, (int) p_y - curr_state.sprite_h, facing_left);
+	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, anim_x, anim_y + player_sprite_y_offset, (int) p_x - PLAYER_SPRITE_W / 2 - cam_off, (int) p_y - PLAYER_SPRITE_H, facing_left);
 
 	// HUD
 	draw_level(2, 2, 2);
 
-	char candy_text[] = ".\0"; // TODO "world 1-1"
-	candy_text[1] = candy_count + '0';
+	char candy_text[] = ".xy"; // TODO "world 1-1"
+	candy_text[1] = (candy_count / 10) + '0';
+	candy_text[2] = (candy_count % 10) + '0';
 	draw_text(candy_text, 17, 8);
 }
 
@@ -369,7 +337,7 @@ void game_init() {
 static void update_playing_level(const Input *input) {
 
 	// falling into pit
-	if (p_y - curr_state.col_h - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
+	if (p_y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
 
 		restart_level();
 	}
@@ -393,16 +361,16 @@ static void update_playing_level(const Input *input) {
 
 		if (input->left) {
 			facing_left = 1;
-			p_dx -= p_dx > 0 ? curr_state.run_deceleration : curr_state.run_acceleration;
-			if (-p_dx > curr_state.max_run_speed)
-				p_dx = -curr_state.max_run_speed;
+			p_dx -= p_dx > 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
+			if (-p_dx > PLAYER_MAX_SPEED)
+				p_dx = -PLAYER_MAX_SPEED;
 		}
 
 		if (input->right) {
 			facing_left = 0;
-			p_dx += p_dx < 0 ? curr_state.run_deceleration : curr_state.run_acceleration;
-			if (p_dx > curr_state.max_run_speed)
-				p_dx = curr_state.max_run_speed;
+			p_dx += p_dx < 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
+			if (p_dx > PLAYER_MAX_SPEED)
+				p_dx = PLAYER_MAX_SPEED;
 		}
 
 	} else {
@@ -417,7 +385,7 @@ static void update_playing_level(const Input *input) {
 	// jump
 	if (t_since_grounded < JUMP_LEEWAY && t_since_jump < JUMP_LEEWAY) {
 
-		p_dy = curr_state.jump_speed + (p_dx < 0 ? p_dx : -p_dx) / curr_state.max_run_speed * 0.5;
+		p_dy = PLAYER_JUMP_SPEED + (p_dx < 0 ? p_dx : -p_dx) / PLAYER_MAX_SPEED * 0.5;
 		t_since_grounded = JUMP_LEEWAY;
 
 		if (!input->action_a) { // the jump was early-released before the jump even started!
@@ -447,35 +415,6 @@ static void update_playing_level(const Input *input) {
 		do {
 			p_x -= p_dx * 0.1;
 		} while (player_is_colliding());
-
-		// breakable tile breaking
-		if (curr_state_i >= 2) {
-
-			int significant_x = p_dx > 0 ? end_x : start_x;
-			int broke_something = 0;
-
-			for (int y = start_y; y <= end_y; y++) {
-
-				if (level[y + significant_x * LEVEL_HEIGHT] == 2) {
-
-					level[y + significant_x * LEVEL_HEIGHT] = 0;
-					broke_something = 1;
-
-					// broken tile particles
-					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16, -1.0, -3.0 });
-					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16,  1.0, -3.0 });
-					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16, -1.0,  0.0 });
-					add_entity((Entity) { BROKEN_ET, significant_x * 16, y * 16,  1.0,  0.0 });
-				}
-			}
-
-			if (broke_something) {
-
-				p_dx = p_dx < 0 ? 1.0 : -1.0;
-				p_dy = -0.5;
-				goto skip_horizontal;
-			}
-		}
 
 		p_dx = 0;
 
@@ -540,12 +479,6 @@ static void update_playing_level(const Input *input) {
 
 				candy_count++;
 				level[y + x * LEVEL_HEIGHT] = 0;
-
-				if (candy_count == 10) {
-
-					candy_count = 0;
-					increase_state();
-				}
 			}
 		}
 	}
@@ -558,22 +491,22 @@ static void update_playing_level(const Input *input) {
 	if (input->down) {
 
 		anim_x = 0;
-		anim_y = 3 * curr_state.sprite_h;
+		anim_y = 3 * PLAYER_SPRITE_H;
 
 	} else if (t_since_grounded != 0) {
 
-		if (p_dy > -curr_state.jump_speed / 2.7) {
-			anim_x = 2 * curr_state.sprite_w;
-			anim_y = 2 * curr_state.sprite_h;
-		} else if (p_dy < curr_state.jump_speed / 2.7) {
+		if (p_dy > -PLAYER_JUMP_SPEED / 2.7) {
+			anim_x = 2 * PLAYER_SPRITE_W;
+			anim_y = 2 * PLAYER_SPRITE_H;
+		} else if (p_dy < PLAYER_JUMP_SPEED / 2.7) {
 			anim_x = 0;
-			anim_y = 2 * curr_state.sprite_h;
+			anim_y = 2 * PLAYER_SPRITE_H;
 		} else {
-			anim_x = curr_state.sprite_w;
-			anim_y = 2 * curr_state.sprite_h;
+			anim_x = PLAYER_SPRITE_W;
+			anim_y = 2 * PLAYER_SPRITE_H;
 		}
 		
-	} else if (p_dx == 0 || (!input->left && !input->right && p_dx < curr_state.run_acceleration && p_dx > -curr_state.run_acceleration)) {
+	} else if (p_dx == 0 || (!input->left && !input->right && p_dx < PLAYER_RUN_ACCEL && p_dx > -PLAYER_RUN_ACCEL)) {
 
 		// TODO idle animation
 		anim_x = 0;
@@ -582,14 +515,14 @@ static void update_playing_level(const Input *input) {
 
 	} else if (facing_left == p_dx > 0) { // turning animation occurs when facing left but moving right (or opposite)
 	
-		anim_x = curr_state.sprite_w;
-		anim_y = 3 * curr_state.sprite_h;
+		anim_x = PLAYER_SPRITE_W;
+		anim_y = 3 * PLAYER_SPRITE_H;
 		p_animt = 0;
 	
 	} else {
 
-		anim_x = (int) p_animt % 4 * curr_state.sprite_w;
-		anim_y = curr_state.sprite_h;
+		anim_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
+		anim_y = PLAYER_SPRITE_H;
 	}
 
 	draw_level_contents(anim_x, anim_y);
@@ -617,9 +550,9 @@ static void update_paused_from_level(const Input *input) {
 
 static void update_ending_level() {
 
-	p_x += curr_state.max_run_speed;
+	p_x += PLAYER_MAX_SPEED;
 
-	draw_level_contents((int) p_animt % 4 * curr_state.sprite_w, curr_state.sprite_h);
+	draw_level_contents((int) p_animt % 4 * PLAYER_SPRITE_W, PLAYER_SPRITE_H);
 
 	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
 
@@ -646,7 +579,7 @@ void game_update(const Input *input) {
 			break;
 		
 		case STARTING_LEVEL_ST:
-			gamestate = PLAYING_LEVEL_ST;
+			gamestate = PLAYING_LEVEL_ST; // TODO actually do a little animation
 			break;
 		
 		case PAUSED_FROM_LEVEL_ST:

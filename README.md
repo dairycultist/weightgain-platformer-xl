@@ -1,5 +1,10 @@
-A simple standalone weight-gain platformer with retexturing support. The weight-gain mechanic plays the role of the
-traditional SMB-like powerup system.
+playing a two-player platformer with a controller is so fun
+
+maybe with some undertale dialogue boxes idk
+
+P1 P2
+
+picking up and throwing things is a primary mechanic
 
 Vivian character originally made by (and stolen from) DoubleCap Productions ([source](https://someoneuknow9097.itch.io/smb1r-weight-gain-mod)).
 
@@ -30,17 +35,10 @@ cd weightgain-platformer-xl
 make run
 ```
 
-## Modding
+## Custom characters
 
-Currently you can mod character sprites, level sprites, and the font. (custom levels are planned but not a priority;
-for now enjoy my handful of preset levels :3).
+Put your character sprites in `./characters/` as a `.png`. The resolution of individual sprites *must* match up and have the same layout (I recommend copying an existing one as a template). You should also keep the resolution of the images the same. You can switch between characters using the -/+ keys.
 
-The resolution of individual sprites *must* match up and have the same layout. You should also keep the resolution of
-the images the same.
+## Custom levels
 
-Put your character sprites in `./characters/` as a `.png` (I recommend copying an existing one as a template). You can
-switch between characters using the -/+ keys.
-
-To mod level sprites, edit the `./misc/level.png` file (currently no switching system).
-
-To mod the font, edit the `./misc/font.png` file (currently no switching system).
+planned
