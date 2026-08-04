@@ -315,15 +315,15 @@ static void restart_level() { // e.g. on first start; on death
 	player.y = 248.0;
 	player.dx = 0.0;
 	player.dy = 0.0;
-
 	player.t_since_jump     = JUMP_LEEWAY;
 	player.t_since_grounded = JUMP_LEEWAY;
 
 	candy_count = 0;
-	cam_off = 0;
+	cam_off     = 0;
 	facing_left = 0;
-	
-	set_background(100, 200, 255);
+	level_animt = 0;
+
+	set_background(0, 0, 0);
 }
 
 static void increase_level() { // e.g. on stage win
@@ -401,12 +401,12 @@ static void draw_level_contents() { // player sprite sheet offsets
 	draw_text(candy_text, 97, 8);
 
 	draw_character(0, 16, 16, 96, 64, 3, 2, 0);
-	draw_text(".3", 21, 8);
+	draw_text(".3", 18, 8);
 
 	// draw_text("press start", 3, 24);
 
 	draw_character(1, 16, 16, 96, 64, 3, 18, 0);
-	draw_text(".3", 21, 24);
+	draw_text(".3", 18, 24);
 
 	draw_text("world 1-1", 200, 8);
 	draw_text("00002100", 206, 24);
@@ -587,6 +587,25 @@ static void update_ending_level() {
 		increase_level();
 }
 
+static void update_starting_level() {
+
+	draw_text("world 1-1", 100, 60);
+
+	draw_text("player 1", 52, 90);
+	draw_character(0, 16, 16, 96, 64, 60, 100, 0);
+	draw_text(".3", 75, 106);
+
+	draw_text("player 2", 152, 90);
+	draw_character(1, 16, 16, 96, 64, 160, 100, 0);
+	draw_text(".3", 175, 106);
+
+	if (level_animt++ > 200) {
+
+		gamestate = PLAYING_LEVEL_ST;
+		set_background(100, 200, 255);
+	}
+}
+
 void game_update(const Input *input) {
 
 	// should move this to inside the static update functions, but idc rn
@@ -606,7 +625,7 @@ void game_update(const Input *input) {
 			break;
 		
 		case STARTING_LEVEL_ST:
-			gamestate = PLAYING_LEVEL_ST; // TODO actually do a little animation
+			update_starting_level();
 			break;
 		
 		case PAUSED_FROM_LEVEL_ST:
