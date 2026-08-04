@@ -37,7 +37,9 @@ make run
 
 ## Custom characters
 
-Put your character sprites in `./characters/` as a `.png`. The resolution of individual sprites *must* match up and have the same layout (I recommend copying an existing one as a template). You should also keep the resolution of the images the same. You can switch between characters using the -/+ keys.
+Put your character sprites in `./characters/` as a `.png`. The resolution of individual sprites *must* match up and have the same layout (I recommend copying an existing one as a template). You should also keep the resolution of the images the same.
+
+You can switch between characters using the -/+ keys (player 1) or the \[/\] keys (player 2).
 
 ## Custom levels
 

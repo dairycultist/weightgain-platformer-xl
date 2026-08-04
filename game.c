@@ -390,7 +390,7 @@ static void draw_level_contents() { // player sprite sheet offsets
 	}
 
 	// character
-	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, player.spr_x, player.spr_y, (int) player.x - PLAYER_SPRITE_W / 2 - cam_off, (int) player.y - PLAYER_SPRITE_H, facing_left);
+	draw_character(0, PLAYER_SPRITE_W, PLAYER_SPRITE_H, player.spr_x, player.spr_y, (int) player.x - PLAYER_SPRITE_W / 2 - cam_off, (int) player.y - PLAYER_SPRITE_H, facing_left);
 
 	// HUD
 	draw_level(2, 82, 2); // candy
@@ -400,13 +400,13 @@ static void draw_level_contents() { // player sprite sheet offsets
 	candy_text[2] = (candy_count % 10) + '0';
 	draw_text(candy_text, 97, 8);
 
-	draw_character(16, 16, 96, 64, 3, 2, 0);
+	draw_character(0, 16, 16, 96, 64, 3, 2, 0);
 	draw_text(".3", 21, 8);
 
-	draw_text("press start", 3, 24);
+	// draw_text("press start", 3, 24);
 
-	// draw_character(16, 16, 96, 64, 3, 18, 0);
-	// draw_text("player 2", 21, 24);
+	draw_character(1, 16, 16, 96, 64, 3, 18, 0);
+	draw_text(".3", 21, 24);
 
 	draw_text("world 1-1", 200, 8);
 	draw_text("00002100", 206, 24);

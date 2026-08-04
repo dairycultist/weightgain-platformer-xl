@@ -12,7 +12,7 @@ static SDL_Texture *ss_font;
 
 static SDL_Texture **ss_characters; // array of SDL_Texture *
 static int num_characters;
-static int curr_character;
+static int p1_ss_index, p2_ss_index;
 
 static uint8_t bg_r, bg_g, bg_b;
 
@@ -23,12 +23,13 @@ void set_background(uint8_t r, uint8_t g, uint8_t b) {
 	bg_b = b;
 }
 
-void draw_character(int w, int h, int from_x, int from_y, int to_x, int to_y, int flip) {
+void draw_character(int p, int w, int h, int from_x, int from_y, int to_x, int to_y, int flip) {
 
 	SDL_Rect copy_rect = { from_x, from_y, w, h };
 	SDL_Rect paste_rect = { to_x, to_y, w, h };
 
-	SDL_RenderCopyEx(renderer, ss_characters[curr_character], &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+	// if p is 0 we draw from player 1's sprite sheet, otherwise player 2's
+	SDL_RenderCopyEx(renderer, ss_characters[p ? p2_ss_index : p1_ss_index], &copy_rect, &paste_rect, 0.0, NULL, flip ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
 
 void draw_level(int index, int x, int y) {
@@ -125,7 +126,8 @@ int main(void) {
 	// load all character sprites
 	ss_characters = malloc(0);
 	num_characters = 0;
-	curr_character = 0;
+	p1_ss_index = 0;
+	p2_ss_index = 0;
 
 	{
 		DIR *dir = opendir("./characters"); 
@@ -238,21 +240,33 @@ int main(void) {
 						input.pause = event.key.state == SDL_PRESSED;
 						input.pause_justchanged = 1;
 						break;
-					case SDL_SCANCODE_MINUS: // decrement curr_character
-					case SDL_SCANCODE_LEFTBRACKET:
+					case SDL_SCANCODE_MINUS: // decrement p1_ss_index
 						if (event.type != SDL_KEYDOWN)
 							break;
-						curr_character--;
-						if (curr_character == -1)
-							curr_character = num_characters - 1;
+						p1_ss_index--;
+						if (p1_ss_index == -1)
+							p1_ss_index = num_characters - 1;
 						break;
-					case SDL_SCANCODE_EQUALS: // increment curr_character
-					case SDL_SCANCODE_RIGHTBRACKET:
+					case SDL_SCANCODE_EQUALS: // increment p1_ss_index
 						if (event.type != SDL_KEYDOWN)
 							break;
-						curr_character++;
-						if (curr_character == num_characters)
-							curr_character = 0;
+						p1_ss_index++;
+						if (p1_ss_index == num_characters)
+							p1_ss_index = 0;
+						break;
+					case SDL_SCANCODE_LEFTBRACKET: // decrement p2_ss_index
+						if (event.type != SDL_KEYDOWN)
+							break;
+						p2_ss_index--;
+						if (p2_ss_index == -1)
+							p2_ss_index = num_characters - 1;
+						break;
+					case SDL_SCANCODE_RIGHTBRACKET: // increment p2_ss_index
+						if (event.type != SDL_KEYDOWN)
+							break;
+						p2_ss_index++;
+						if (p2_ss_index == num_characters)
+							p2_ss_index = 0;
 						break;
 					default:
 						break;
