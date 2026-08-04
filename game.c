@@ -40,6 +40,8 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_MAX_SPEED 3.0
 #define PLAYER_JUMP_SPEED -5.0
 
+#define JUMP_LEEWAY 6
+
 typedef struct {
 
 	float x, y;
@@ -48,7 +50,6 @@ typedef struct {
 	int spr_x, spr_y;
 	float animt;
 
-	#define JUMP_LEEWAY 6
 	int t_since_jump;     // for input-caching
 	int t_since_grounded; // for coyote-time
 
@@ -367,6 +368,7 @@ static void draw_level_contents() { // player sprite sheet offsets
 	}
 
 	// process/draw entities
+	// TODO move entity processing elsewhere, this function should only do drawing
 	for (int i = 0; i < sizeof(entities) / sizeof(Entity); i++) {
 
 		switch (entities[i].type) {
@@ -391,12 +393,23 @@ static void draw_level_contents() { // player sprite sheet offsets
 	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, player.spr_x, player.spr_y, (int) player.x - PLAYER_SPRITE_W / 2 - cam_off, (int) player.y - PLAYER_SPRITE_H, facing_left);
 
 	// HUD
-	draw_level(2, 2, 2);
+	draw_level(2, 82, 2); // candy
 
-	char candy_text[] = ".xy"; // TODO "world 1-1"
+	char candy_text[] = ".xy";
 	candy_text[1] = (candy_count / 10) + '0';
 	candy_text[2] = (candy_count % 10) + '0';
-	draw_text(candy_text, 17, 8);
+	draw_text(candy_text, 97, 8);
+
+	draw_character(16, 16, 96, 64, 3, 2, 0);
+	draw_text(".3", 21, 8);
+
+	draw_text("press start", 3, 24);
+
+	// draw_character(16, 16, 96, 64, 3, 18, 0);
+	// draw_text("player 2", 21, 24);
+
+	draw_text("world 1-1", 200, 8);
+	draw_text("00002100", 206, 24);
 }
 
 // game logic functions
