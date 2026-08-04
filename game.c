@@ -40,10 +40,9 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_MAX_SPEED 3.0
 #define PLAYER_JUMP_SPEED -5.0
 
-static int player_sprite_y_offset = 0;
-
 static float p_x, p_y;
 static float p_dx, p_dy;
+static int p_spr_x, p_spr_y;
 
 static int candy_count;
 static int cam_off;
@@ -329,7 +328,7 @@ static void increase_level() { // e.g. on stage win
 	restart_level();
 }
 
-static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet offsets
+static void draw_level_contents() { // player sprite sheet offsets
 
 	// draw level
 	// TODO don't draw parts that are obviously off-screen
@@ -385,7 +384,7 @@ static void draw_level_contents(int anim_x, int anim_y) { // player sprite sheet
 	}
 
 	// character
-	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, anim_x, anim_y + player_sprite_y_offset, (int) p_x - PLAYER_SPRITE_W / 2 - cam_off, (int) p_y - PLAYER_SPRITE_H, facing_left);
+	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, p_spr_x, p_spr_y, (int) p_x - PLAYER_SPRITE_W / 2 - cam_off, (int) p_y - PLAYER_SPRITE_H, facing_left);
 
 	// HUD
 	draw_level(2, 2, 2);
@@ -418,6 +417,7 @@ static void update_playing_level(const Input *input) {
 
 		// we've reached the end of the level (camera has fully scrolled to right side of level)
 		facing_left = 0;
+		p_dx = PLAYER_MAX_SPEED;
 		gamestate = EXITING_LEVEL_ST;
 
 		return;
@@ -500,46 +500,44 @@ static void update_playing_level(const Input *input) {
 	// draw
 
 	// determine animation
-	int anim_x, anim_y;
-
 	if (input->down) {
 
-		anim_x = 0;
-		anim_y = 3 * PLAYER_SPRITE_H;
+		p_spr_x = 0;
+		p_spr_y = 3 * PLAYER_SPRITE_H;
 
 	} else if (t_since_grounded != 0) {
 
 		if (p_dy > -PLAYER_JUMP_SPEED / 2.7) {
-			anim_x = 2 * PLAYER_SPRITE_W;
-			anim_y = 2 * PLAYER_SPRITE_H;
+			p_spr_x = 2 * PLAYER_SPRITE_W;
+			p_spr_y = 2 * PLAYER_SPRITE_H;
 		} else if (p_dy < PLAYER_JUMP_SPEED / 2.7) {
-			anim_x = 0;
-			anim_y = 2 * PLAYER_SPRITE_H;
+			p_spr_x = 0;
+			p_spr_y = 2 * PLAYER_SPRITE_H;
 		} else {
-			anim_x = PLAYER_SPRITE_W;
-			anim_y = 2 * PLAYER_SPRITE_H;
+			p_spr_x = PLAYER_SPRITE_W;
+			p_spr_y = 2 * PLAYER_SPRITE_H;
 		}
 		
 	} else if (p_dx == 0 || (!input->left && !input->right && p_dx < PLAYER_RUN_ACCEL && p_dx > -PLAYER_RUN_ACCEL)) {
 
 		// TODO idle animation
-		anim_x = 0;
-		anim_y = 0;
+		p_spr_x = 0;
+		p_spr_y = 0;
 		p_animt = 0;
 
 	} else if (facing_left == p_dx > 0) { // turning animation occurs when facing left but moving right (or opposite)
 	
-		anim_x = PLAYER_SPRITE_W;
-		anim_y = 3 * PLAYER_SPRITE_H;
+		p_spr_x = PLAYER_SPRITE_W;
+		p_spr_y = 3 * PLAYER_SPRITE_H;
 		p_animt = 0;
 	
 	} else {
 
-		anim_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
-		anim_y = PLAYER_SPRITE_H;
+		p_spr_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
+		p_spr_y = PLAYER_SPRITE_H;
 	}
 
-	draw_level_contents(anim_x, anim_y);
+	draw_level_contents();
 
 	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
 
@@ -557,11 +555,16 @@ static void update_paused_from_level(const Input *input) {
 
 static void update_ending_level() {
 
-	p_x += PLAYER_MAX_SPEED;
+	p_dy += 0.2; // gravity
 
-	draw_level_contents((int) p_animt % 4 * PLAYER_SPRITE_W, PLAYER_SPRITE_H);
+	player_move_and_slide();
 
-	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
+	p_spr_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
+	p_spr_y = PLAYER_SPRITE_H;
+
+	draw_level_contents();
+
+	p_animt += p_dx * 0.1;
 
 	if (p_x - 64 > LEVEL_WIDTH * 16)
 		increase_level();
