@@ -40,19 +40,25 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_MAX_SPEED 3.0
 #define PLAYER_JUMP_SPEED -5.0
 
-static float p_x, p_y;
-static float p_dx, p_dy;
-static int p_spr_x, p_spr_y;
+typedef struct {
+
+	float x, y;
+	float dx, dy;
+
+	int spr_x, spr_y;
+	float animt;
+
+	#define JUMP_LEEWAY 6
+	int t_since_jump;     // for input-caching
+	int t_since_grounded; // for coyote-time
+
+} Player;
+
+static Player player;
 
 static int candy_count;
 static int cam_off;
 static int facing_left;
-
-#define JUMP_LEEWAY 6
-static int t_since_jump;     // for input-caching
-static int t_since_grounded; // for coyote-time
-
-static float p_animt;
 
 // level data
 //
@@ -197,14 +203,14 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 
 	#define FLOOR(v) ((v) >= 0 || (v) == (int) (v) ? ((int) (v)) : ((int) (v) - 1))
 
-	*start_x = FLOOR((p_x - PLAYER_COLLIDER_W / 2) / 16.0);
-	*start_y = FLOOR((p_y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET) / 16.0);
+	*start_x = FLOOR((player.x - PLAYER_COLLIDER_W / 2) / 16.0);
+	*start_y = FLOOR((player.y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = FLOOR((p_x - 1 + PLAYER_COLLIDER_W / 2) / 16.0);
-	*end_y = FLOOR((p_y - 1 - LEVEL_Y_OFFSET) / 16.0);
+	*end_x = FLOOR((player.x - 1 + PLAYER_COLLIDER_W / 2) / 16.0);
+	*end_y = FLOOR((player.y - 1 - LEVEL_Y_OFFSET) / 16.0);
 
 	if (*end_y > LEVEL_HEIGHT - 1)
 		*end_y = LEVEL_HEIGHT - 1;
@@ -213,7 +219,7 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 static int player_is_colliding() {
 
 	// colliding with left side of screen?
-	if ((int) p_x - PLAYER_COLLIDER_W / 2 < cam_off)
+	if ((int) player.x - PLAYER_COLLIDER_W / 2 < cam_off)
 		return 1;
 
 	// colliding with the level?
@@ -235,7 +241,7 @@ static int player_is_colliding() {
 
 static void player_move_and_slide() {
 
-	p_x += p_dx;
+	player.x += player.dx;
 
 	if (player_is_colliding()) {
 
@@ -244,15 +250,13 @@ static void player_move_and_slide() {
 
 		// legalize position
 		do {
-			p_x -= p_dx * 0.1;
+			player.x -= player.dx * 0.1;
 		} while (player_is_colliding());
 
-		p_dx = 0;
-
-		skip_horizontal:
+		player.dx = 0;
 	}
 
-	p_y += p_dy;
+	player.y += player.dy;
 
 	if (player_is_colliding()) {
 
@@ -261,11 +265,11 @@ static void player_move_and_slide() {
 
 		// legalize position
 		do {
-			p_y -= p_dy * 0.1;
+			player.y -= player.dy * 0.1;
 		} while (player_is_colliding());
 
 		// breakable tile breaking (can be modified to allow for breaking downward)
-		if (p_dy < 0) {
+		if (player.dy < 0) {
 
 			int broke_something = 0;
 
@@ -286,13 +290,13 @@ static void player_move_and_slide() {
 
 			if (broke_something) {
 
-				p_dy = p_dy < 0 ? 1.0 : -1.5;
+				player.dy = player.dy < 0 ? 1.0 : -1.5;
 				goto skip_vertical;
 			}
 		}
 
-		t_since_grounded = 0;
-		p_dy = 1;
+		player.t_since_grounded = 0;
+		player.dy = 1;
 
 		skip_vertical:
 
@@ -306,13 +310,13 @@ static void restart_level() { // e.g. on first start; on death
 
 	// TODO (re)load level
 
-	p_x = 48.0;
-	p_y = 248.0;
-	p_dx = 0.0;
-	p_dy = 0.0;
+	player.x = 48.0;
+	player.y = 248.0;
+	player.dx = 0.0;
+	player.dy = 0.0;
 
-	t_since_jump     = JUMP_LEEWAY;
-	t_since_grounded = JUMP_LEEWAY;
+	player.t_since_jump     = JUMP_LEEWAY;
+	player.t_since_grounded = JUMP_LEEWAY;
 
 	candy_count = 0;
 	cam_off = 0;
@@ -384,7 +388,7 @@ static void draw_level_contents() { // player sprite sheet offsets
 	}
 
 	// character
-	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, p_spr_x, p_spr_y, (int) p_x - PLAYER_SPRITE_W / 2 - cam_off, (int) p_y - PLAYER_SPRITE_H, facing_left);
+	draw_character(PLAYER_SPRITE_W, PLAYER_SPRITE_H, player.spr_x, player.spr_y, (int) player.x - PLAYER_SPRITE_W / 2 - cam_off, (int) player.y - PLAYER_SPRITE_H, facing_left);
 
 	// HUD
 	draw_level(2, 2, 2);
@@ -405,78 +409,78 @@ void game_init() {
 static void update_playing_level(const Input *input) {
 
 	// falling into pit
-	if (p_y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
+	if (player.y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET > LEVEL_HEIGHT * 16) {
 
 		restart_level();
 	}
 
 	// update camera offset
-	if (p_x + 127.5 > LEVEL_WIDTH * 16) {
+	if (player.x + 127.5 > LEVEL_WIDTH * 16) {
 		
 		cam_off = LEVEL_WIDTH * 16 - WIDTH;
 
 		// we've reached the end of the level (camera has fully scrolled to right side of level)
 		facing_left = 0;
-		p_dx = PLAYER_MAX_SPEED;
+		player.dx = PLAYER_MAX_SPEED;
 		gamestate = EXITING_LEVEL_ST;
 
 		return;
 
-	} else if (cam_off < p_x - 127.5) {
+	} else if (cam_off < player.x - 127.5) {
 
-		cam_off = p_x - 127.5;
+		cam_off = player.x - 127.5;
 	}
 
 	// running
 	if (!input->left && !input->right) {
 
-		p_dx *= 0.95;
+		player.dx *= 0.95;
 
-	} else if (t_since_grounded != 0 || !input->down) {
+	} else if (player.t_since_grounded != 0 || !input->down) {
 
 		if (input->left) {
 			facing_left = 1;
-			p_dx -= p_dx > 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
-			if (-p_dx > PLAYER_MAX_SPEED)
-				p_dx = -PLAYER_MAX_SPEED;
+			player.dx -= player.dx > 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
+			if (-player.dx > PLAYER_MAX_SPEED)
+				player.dx = -PLAYER_MAX_SPEED;
 		}
 
 		if (input->right) {
 			facing_left = 0;
-			p_dx += p_dx < 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
-			if (p_dx > PLAYER_MAX_SPEED)
-				p_dx = PLAYER_MAX_SPEED;
+			player.dx += player.dx < 0 ? PLAYER_RUN_DECEL : PLAYER_RUN_ACCEL;
+			if (player.dx > PLAYER_MAX_SPEED)
+				player.dx = PLAYER_MAX_SPEED;
 		}
 
 	} else {
 		
-		p_dx *= 0.95;
+		player.dx *= 0.95;
 	}
 
 	// cache jump
 	if (input->action_a_justchanged && input->action_a)
-		t_since_jump = 0;
+		player.t_since_jump = 0;
 
 	// jump
-	if (t_since_grounded < JUMP_LEEWAY && t_since_jump < JUMP_LEEWAY) {
+	if (player.t_since_grounded < JUMP_LEEWAY && player.t_since_jump < JUMP_LEEWAY) {
 
-		p_dy = PLAYER_JUMP_SPEED + (p_dx < 0 ? p_dx : -p_dx) / PLAYER_MAX_SPEED * 0.5;
-		t_since_grounded = JUMP_LEEWAY;
+		player.dy = PLAYER_JUMP_SPEED + (player.dx < 0 ? player.dx : -player.dx) / PLAYER_MAX_SPEED * 0.5;
+		player.t_since_grounded = JUMP_LEEWAY;
 
 		if (!input->action_a) { // the jump was early-released before the jump even started!
-			p_dy /= 2;
+			player.dy /= 2;
 		}
 
-		t_since_jump = JUMP_LEEWAY; // if we don't do this, then we can actually jump twice for one jump press
+		player.t_since_jump = JUMP_LEEWAY; // if we don't do this, then we can actually jump twice for one jump press
 	}
 
 	// early release jump
-	if (p_dy < 0 && input->action_a_justchanged && !input->action_a) {
-		p_dy /= 2;
+	if (player.dy < 0 && input->action_a_justchanged && !input->action_a) {
+		player.dy /= 2;
 	}
 
 	// gravity
-	p_dy += 0.2;
+	player.dy += 0.2;
 
 	// apply velocity while respecting collision
 	player_move_and_slide();
@@ -502,48 +506,48 @@ static void update_playing_level(const Input *input) {
 	// determine animation
 	if (input->down) {
 
-		p_spr_x = 0;
-		p_spr_y = 3 * PLAYER_SPRITE_H;
+		player.spr_x = 0;
+		player.spr_y = 3 * PLAYER_SPRITE_H;
 
-	} else if (t_since_grounded != 0) {
+	} else if (player.t_since_grounded != 0) {
 
-		if (p_dy > -PLAYER_JUMP_SPEED / 2.7) {
-			p_spr_x = 2 * PLAYER_SPRITE_W;
-			p_spr_y = 2 * PLAYER_SPRITE_H;
-		} else if (p_dy < PLAYER_JUMP_SPEED / 2.7) {
-			p_spr_x = 0;
-			p_spr_y = 2 * PLAYER_SPRITE_H;
+		if (player.dy > -PLAYER_JUMP_SPEED / 2.7) {
+			player.spr_x = 2 * PLAYER_SPRITE_W;
+			player.spr_y = 2 * PLAYER_SPRITE_H;
+		} else if (player.dy < PLAYER_JUMP_SPEED / 2.7) {
+			player.spr_x = 0;
+			player.spr_y = 2 * PLAYER_SPRITE_H;
 		} else {
-			p_spr_x = PLAYER_SPRITE_W;
-			p_spr_y = 2 * PLAYER_SPRITE_H;
+			player.spr_x = PLAYER_SPRITE_W;
+			player.spr_y = 2 * PLAYER_SPRITE_H;
 		}
 		
-	} else if (p_dx == 0 || (!input->left && !input->right && p_dx < PLAYER_RUN_ACCEL && p_dx > -PLAYER_RUN_ACCEL)) {
+	} else if (player.dx == 0 || (!input->left && !input->right && player.dx < PLAYER_RUN_ACCEL && player.dx > -PLAYER_RUN_ACCEL)) {
 
 		// TODO idle animation
-		p_spr_x = 0;
-		p_spr_y = 0;
-		p_animt = 0;
+		player.spr_x = 0;
+		player.spr_y = 0;
+		player.animt = 0;
 
-	} else if (facing_left == p_dx > 0) { // turning animation occurs when facing left but moving right (or opposite)
+	} else if (facing_left == player.dx > 0) { // turning animation occurs when facing left but moving right (or opposite)
 	
-		p_spr_x = PLAYER_SPRITE_W;
-		p_spr_y = 3 * PLAYER_SPRITE_H;
-		p_animt = 0;
+		player.spr_x = PLAYER_SPRITE_W;
+		player.spr_y = 3 * PLAYER_SPRITE_H;
+		player.animt = 0;
 	
 	} else {
 
-		p_spr_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
-		p_spr_y = PLAYER_SPRITE_H;
+		player.spr_x = (int) player.animt % 4 * PLAYER_SPRITE_W;
+		player.spr_y = PLAYER_SPRITE_H;
 	}
 
 	draw_level_contents();
 
-	p_animt += (p_dx > 0 ? p_dx : -p_dx) * 0.1;
+	player.animt += (player.dx > 0 ? player.dx : -player.dx) * 0.1;
 
 	level_animt++;
-	t_since_jump++;
-	t_since_grounded++;
+	player.t_since_jump++;
+	player.t_since_grounded++;
 }
 
 static void update_paused_from_level(const Input *input) {
@@ -555,18 +559,18 @@ static void update_paused_from_level(const Input *input) {
 
 static void update_ending_level() {
 
-	p_dy += 0.2; // gravity
+	player.dy += 0.2; // gravity
 
 	player_move_and_slide();
 
-	p_spr_x = (int) p_animt % 4 * PLAYER_SPRITE_W;
-	p_spr_y = PLAYER_SPRITE_H;
+	player.spr_x = (int) player.animt % 4 * PLAYER_SPRITE_W;
+	player.spr_y = PLAYER_SPRITE_H;
 
 	draw_level_contents();
 
-	p_animt += p_dx * 0.1;
+	player.animt += player.dx * 0.1;
 
-	if (p_x - 64 > LEVEL_WIDTH * 16)
+	if (player.x - 64 > LEVEL_WIDTH * 16)
 		increase_level();
 }
 
