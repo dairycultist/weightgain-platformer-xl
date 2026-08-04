@@ -50,8 +50,8 @@ static int cam_off;
 static int facing_left;
 
 #define JUMP_LEEWAY 6
-static int t_since_jump = 30; // for input-caching
-static int t_since_grounded = 0; // for coyote-time
+static int t_since_jump;     // for input-caching
+static int t_since_grounded; // for coyote-time
 
 static float p_animt;
 
@@ -234,6 +234,72 @@ static int player_is_colliding() {
 	return 0;
 }
 
+static void player_move_and_slide() {
+
+	p_x += p_dx;
+
+	if (player_is_colliding()) {
+
+		int start_x, start_y, end_x, end_y;
+		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+		// legalize position
+		do {
+			p_x -= p_dx * 0.1;
+		} while (player_is_colliding());
+
+		p_dx = 0;
+
+		skip_horizontal:
+	}
+
+	p_y += p_dy;
+
+	if (player_is_colliding()) {
+
+		int start_x, start_y, end_x, end_y;
+		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
+
+		// legalize position
+		do {
+			p_y -= p_dy * 0.1;
+		} while (player_is_colliding());
+
+		// breakable tile breaking (can be modified to allow for breaking downward)
+		if (p_dy < 0) {
+
+			int broke_something = 0;
+
+			for (int x = start_x; x <= end_x; x++) {
+
+				if (level[start_y + x * LEVEL_HEIGHT] == 2) {
+
+					level[start_y + x * LEVEL_HEIGHT] = 0;
+					broke_something = 1;
+
+					// broken tile particles
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0, -3.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0,  0.0 });
+					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0,  0.0 });
+				}
+			}
+
+			if (broke_something) {
+
+				p_dy = p_dy < 0 ? 1.0 : -1.5;
+				goto skip_vertical;
+			}
+		}
+
+		t_since_grounded = 0;
+		p_dy = 1;
+
+		skip_vertical:
+
+	}
+}
+
 static void restart_level() { // e.g. on first start; on death
 
 	// show level intro screen
@@ -245,6 +311,9 @@ static void restart_level() { // e.g. on first start; on death
 	p_y = 248.0;
 	p_dx = 0.0;
 	p_dy = 0.0;
+
+	t_since_jump     = JUMP_LEEWAY;
+	t_since_grounded = JUMP_LEEWAY;
 
 	candy_count = 0;
 	cam_off = 0;
@@ -347,6 +416,12 @@ static void update_playing_level(const Input *input) {
 		
 		cam_off = LEVEL_WIDTH * 16 - WIDTH;
 
+		// we've reached the end of the level (camera has fully scrolled to right side of level)
+		facing_left = 0;
+		gamestate = EXITING_LEVEL_ST;
+
+		return;
+
 	} else if (cam_off < p_x - 127.5) {
 
 		cam_off = p_x - 127.5;
@@ -404,68 +479,7 @@ static void update_playing_level(const Input *input) {
 	p_dy += 0.2;
 
 	// apply velocity while respecting collision
-	p_x += p_dx;
-
-	if (player_is_colliding()) {
-
-		int start_x, start_y, end_x, end_y;
-		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
-
-		// legalize position
-		do {
-			p_x -= p_dx * 0.1;
-		} while (player_is_colliding());
-
-		p_dx = 0;
-
-		skip_horizontal:
-	}
-
-	p_y += p_dy;
-
-	if (player_is_colliding()) {
-
-		int start_x, start_y, end_x, end_y;
-		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
-
-		// legalize position
-		do {
-			p_y -= p_dy * 0.1;
-		} while (player_is_colliding());
-
-		// breakable tile breaking (can be modified to allow for breaking downward)
-		if (p_dy < 0) {
-
-			int broke_something = 0;
-
-			for (int x = start_x; x <= end_x; x++) {
-
-				if (level[start_y + x * LEVEL_HEIGHT] == 2) {
-
-					level[start_y + x * LEVEL_HEIGHT] = 0;
-					broke_something = 1;
-
-					// broken tile particles
-					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0, -3.0 });
-					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0, -3.0 });
-					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16, -1.0,  0.0 });
-					add_entity((Entity) { BROKEN_ET, x * 16, start_y * 16,  1.0,  0.0 });
-				}
-			}
-
-			if (broke_something) {
-
-				p_dy = p_dy < 0 ? 1.0 : -1.5;
-				goto skip_vertical;
-			}
-		}
-
-		t_since_grounded = 0;
-		p_dy = 1;
-
-		skip_vertical:
-
-	}
+	player_move_and_slide();
 
 	// collect candy
 	int start_x, start_y, end_x, end_y;
@@ -532,13 +546,6 @@ static void update_playing_level(const Input *input) {
 	level_animt++;
 	t_since_jump++;
 	t_since_grounded++;
-
-	// detect if we've reached the end of the level (a few tiles away from right edge)
-	if ((int) p_x + 64 > LEVEL_WIDTH * 16) {
-		
-		facing_left = 0;
-		gamestate = EXITING_LEVEL_ST;
-	}
 }
 
 static void update_paused_from_level(const Input *input) {
