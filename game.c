@@ -41,13 +41,6 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_JUMP_SPEED -5.0
 #define PLAYER_SLIDE_ACCEL 0.1
 
-// we need some velocity downwards even when grounded so that we collide
-// with the ground every frame (which constitutes being grounded) and
-// to stick to slopes as we run down them
-// this velocity gets overwritten when jumping (with jump speed) or when
-// running off an edge (with 0)
-#define GROUNDING_PRESSURE 4
-
 #define JUMP_LEEWAY 6
 
 #define PLAYER_TOP    (player.y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET)
@@ -185,21 +178,29 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 1, 2, 2, 2, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 5, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 5, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 5, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 6, 1, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 3, 6, 1, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 3, 6, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 6, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -337,7 +338,14 @@ static void player_move_and_slide() {
 		}
 
 		player.t_since_grounded = 0;
-		player.dy = GROUNDING_PRESSURE;
+
+		// apply grounding pressure
+		//     we need some velocity downwards even when grounded so that we collide
+		//   with the ground every frame (which constitutes being grounded) and
+		//   to stick to slopes as we run down them
+		//     this velocity gets overwritten when jumping (with jump speed) or when
+		//   running off an edge (with 0)
+		player.dy = 1.0 + (player.dx > 0 ? player.dx : -player.dx);
 
 		skip_vertical:
 
