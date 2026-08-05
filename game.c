@@ -40,7 +40,19 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_MAX_SPEED 3.0
 #define PLAYER_JUMP_SPEED -5.0
 
+// we need some velocity downwards even when grounded so that we collide
+// with the ground every frame (which constitutes being grounded) and
+// to stick to slopes as we run down them
+// this velocity gets overwritten when jumping (with jump speed) or when
+// running off an edge (with 0)
+#define GROUNDING_PRESSURE 4
+
 #define JUMP_LEEWAY 6
+
+#define PLAYER_TOP    (player.y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET)
+#define PLAYER_BOTTOM (player.y - 1 - LEVEL_Y_OFFSET)
+#define PLAYER_LEFT   (player.x - PLAYER_COLLIDER_W / 2)
+#define PLAYER_RIGHT  (player.x - 1 + PLAYER_COLLIDER_W / 2)
 
 typedef struct {
 
@@ -67,9 +79,19 @@ static int facing_left;
 #define LEVEL_WIDTH (sizeof(level) / sizeof(int) / LEVEL_HEIGHT)
 #define LEVEL_Y_OFFSET (HEIGHT - LEVEL_HEIGHT * 16)
 
-#define IS_COLLIDABLE(i) (i == 1 || i == 2)
-
 static int level_animt;
+
+#define TILE_EMPTY 0
+#define TILE_GROUND 1
+#define TILE_BRICKS 2
+#define TILE_CANDY 3
+#define TILE_SIGN 4
+#define TILE_L_SLOPE 5
+#define TILE_R_SLOPE 6
+
+#define IS_FULLTILE(i) ((i) == TILE_GROUND || (i) == TILE_BRICKS)
+#define IS_LSLOPE(i) ((i) == TILE_L_SLOPE)
+#define IS_RSLOPE(i) ((i) == TILE_R_SLOPE)
 
 static int level[] = { // to satisfy spatial locality, level data is stored column-major
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -91,18 +113,18 @@ static int level[] = { // to satisfy spatial locality, level data is stored colu
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 1, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 0, 1, 1, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 3, 0, 1, 1, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1,
 	0, 0, 0, 0, 0, 3, 0, 1, 1, 1, 1, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1, 1,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -204,14 +226,14 @@ static void get_player_level_aabb(int *start_x, int *start_y, int *end_x, int *e
 
 	#define FLOOR(v) ((v) >= 0 || (v) == (int) (v) ? ((int) (v)) : ((int) (v) - 1))
 
-	*start_x = FLOOR((player.x - PLAYER_COLLIDER_W / 2) / 16.0);
-	*start_y = FLOOR((player.y - PLAYER_COLLIDER_H - LEVEL_Y_OFFSET) / 16.0);
+	*start_x = FLOOR(PLAYER_LEFT / 16.0);
+	*start_y = FLOOR(PLAYER_TOP / 16.0);
 
 	if (*start_y < 0)
 		*start_y = 0;
 
-	*end_x = FLOOR((player.x - 1 + PLAYER_COLLIDER_W / 2) / 16.0);
-	*end_y = FLOOR((player.y - 1 - LEVEL_Y_OFFSET) / 16.0);
+	*end_x = FLOOR(PLAYER_RIGHT / 16.0);
+	*end_y = FLOOR(PLAYER_BOTTOM / 16.0);
 
 	if (*end_y > LEVEL_HEIGHT - 1)
 		*end_y = LEVEL_HEIGHT - 1;
@@ -232,7 +254,15 @@ static int player_is_colliding() {
 
 		for (int y = start_y; y <= end_y; y++) {
 
-			if (IS_COLLIDABLE(level[y + x * LEVEL_HEIGHT]))
+			int tile = level[y + x * LEVEL_HEIGHT];
+
+			if (IS_FULLTILE(tile))
+				return 1;
+
+			if (IS_LSLOPE(tile) && 15 - (int) PLAYER_BOTTOM % 16 < (int) PLAYER_RIGHT % 16)
+				return 1;
+
+			if (IS_RSLOPE(tile) && (int) PLAYER_BOTTOM % 16 > (int) PLAYER_LEFT % 16)
 				return 1;
 		}
 	}
@@ -297,10 +327,14 @@ static void player_move_and_slide() {
 		}
 
 		player.t_since_grounded = 0;
-		player.dy = 1;
+		player.dy = GROUNDING_PRESSURE;
 
 		skip_vertical:
 
+	} else if (player.t_since_grounded == 1) { // we're no longer grounded, but we were grounded last frame
+
+		// remove grounding pressure
+		player.dy = 0;
 	}
 }
 
@@ -344,23 +378,31 @@ static void draw_level_contents() { // player sprite sheet offsets
 		switch (level[i]) {
 
 			default:
-			case 0:
+			case TILE_EMPTY:
 				continue;
 			
-			case 1: // unbreakable tile
+			case TILE_GROUND: // unbreakable tile
 				sprite = 0;
 				break;
 			
-			case 2: // breakable tile
+			case TILE_BRICKS: // breakable tile
 				sprite = 1;
 				break;
 			
-			case 3: // candy
+			case TILE_CANDY: // candy
 				sprite = 2 + ((level_animt / 16) % 4);
 				break;
 
-			case 4: // sign
+			case TILE_SIGN: // sign
 				sprite = 6;
+				break;
+			
+			case TILE_L_SLOPE:
+				sprite = 7;
+				break;
+
+			case TILE_R_SLOPE:
+				sprite = 8;
 				break;
 		}
 
