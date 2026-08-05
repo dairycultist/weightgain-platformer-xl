@@ -93,11 +93,6 @@ static int level_animt;
 #define IS_LSLOPE(i) ((i) == TILE_L_SLOPE)
 #define IS_RSLOPE(i) ((i) == TILE_R_SLOPE)
 
-// different types of collision necessitate different responses
-#define COLLISION_NONE 0
-#define COLLISION_FULLTILE 1
-#define COLLISION_SLOPE 2
-
 static int level[] = { // to satisfy spatial locality, level data is stored column-major
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1,
@@ -248,14 +243,12 @@ static int player_is_colliding() {
 
 	// colliding with left side of screen?
 	if ((int) player.x - PLAYER_COLLIDER_W / 2 < cam_off)
-		return COLLISION_FULLTILE;
+		return 1;
 
 	// colliding with the level?
 	int start_x, start_y, end_x, end_y;
 
 	get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
-
-	int fulltile_unless_also_slope = 0;
 
 	for (int x = start_x; x <= end_x; x++) {
 
@@ -263,48 +256,38 @@ static int player_is_colliding() {
 
 			int tile = level[y + x * LEVEL_HEIGHT];
 
-			if (IS_FULLTILE(tile)) {
-				
-				fulltile_unless_also_slope = 1;
+			if (IS_FULLTILE(tile))
+				return 1;
 
-			} else if (IS_LSLOPE(tile)) {
+			if (IS_LSLOPE(tile) && 15 - (int) PLAYER_BOTTOM % 16 <= (int) PLAYER_RIGHT % 16)
+				return 1;
 
-				if (15 - ((int) PLAYER_BOTTOM - y * 16) <= (int) PLAYER_RIGHT - x * 16)
-					return COLLISION_SLOPE;
-
-			} else if (IS_RSLOPE(tile)) {
-
-				if ((int) PLAYER_BOTTOM - y * 16 >= (int) PLAYER_LEFT - x * 16)
-					return COLLISION_SLOPE;
-			}
+			if (IS_RSLOPE(tile) && (int) PLAYER_BOTTOM % 16 >= (int) PLAYER_LEFT % 16)
+				return 1;
 		}
 	}
 
-	return fulltile_unless_also_slope ? COLLISION_FULLTILE : COLLISION_NONE;
+	return 0;
 }
 
 static void player_move_and_slide() {
 
-	int collision_type;
-
 	player.x += player.dx;
 
-	if (collision_type = player_is_colliding()) {
+	if (player_is_colliding()) {
 
 		int start_x, start_y, end_x, end_y;
 		get_player_level_aabb(&start_x, &start_y, &end_x, &end_y);
 
-		// legalize position
-		if (collision_type == COLLISION_SLOPE) {
+		// try to legalize position by moving up a bit (for slopes)
+		player.y -= (player.dx > 1.0 ? player.dx : (player.dx < -1.0 ? -player.dx : 1.0)) + 1.0;
 
-			// move up (to scale the slope)
-			do {
-				player.y -= 1.0;
-			} while (player_is_colliding());
+		if (player_is_colliding()) {
 
-		} else {
+			// didn't work, move back
+			player.y += (player.dx > 1.0 ? player.dx : (player.dx < -1.0 ? -player.dx : 1.0)) + 1.0;
 
-			// move back
+			// legalize position
 			do {
 				player.x -= player.dx * 0.1;
 			} while (player_is_colliding());
