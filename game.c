@@ -39,6 +39,7 @@ static Entity entities[32] = {}; // first come, first serve
 #define PLAYER_RUN_DECEL 0.3
 #define PLAYER_MAX_SPEED 3.0
 #define PLAYER_JUMP_SPEED -5.0
+#define PLAYER_SLIDE_ACCEL 0.1
 
 // we need some velocity downwards even when grounded so that we collide
 // with the ground every frame (which constitutes being grounded) and
@@ -495,12 +496,21 @@ static void update_playing_level(const Input *input) {
 		cam_off = player.x - 127.5;
 	}
 
+	// sliding down a slope
+	if (input->down && player.t_since_grounded == 1) {
+
+		if (IS_LSLOPE(level[(int) (PLAYER_BOTTOM / 16.0) + (int) (PLAYER_RIGHT / 16.0) * LEVEL_HEIGHT]))
+			player.dx -= PLAYER_SLIDE_ACCEL;
+		
+		else if (IS_RSLOPE(level[(int) (PLAYER_BOTTOM / 16.0) + (int) (PLAYER_LEFT / 16.0) * LEVEL_HEIGHT]))
+			player.dx += PLAYER_SLIDE_ACCEL;
+
+		// also drag
+		else
+			player.dx *= 0.95;
+
 	// running
-	if (!input->left && !input->right) {
-
-		player.dx *= 0.95;
-
-	} else if (player.t_since_grounded != 0 || !input->down) {
+	} else if (input->left || input->right) {
 
 		if (input->left) {
 			facing_left = 1;
@@ -516,6 +526,7 @@ static void update_playing_level(const Input *input) {
 				player.dx = PLAYER_MAX_SPEED;
 		}
 
+	// drag
 	} else {
 		
 		player.dx *= 0.95;
