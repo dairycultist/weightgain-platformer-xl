@@ -399,8 +399,14 @@ static void draw_level_contents() { // player sprite sheet offsets
 			case TILE_EMPTY:
 				continue;
 			
-			case TILE_GROUND: // unbreakable tile
-				sprite = 0;
+			case TILE_GROUND: // unbreakable tile (has a top variation)
+
+				int above = level[i == 0 ? 0 : (i - 1)];
+
+				if (above == TILE_EMPTY || above == TILE_CANDY || above == TILE_SIGN)
+					sprite = 0;
+				else
+					sprite = 16;
 				break;
 			
 			case TILE_BRICKS: // breakable tile
